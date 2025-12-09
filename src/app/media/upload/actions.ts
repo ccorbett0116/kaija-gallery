@@ -1,0 +1,70 @@
+// src/app/media/upload/actions.ts
+'use server';
+
+import { redirect } from 'next/navigation';
+import { processImage, processVideo, createMediaEntry } from '@/lib/media';
+
+type UploadResult =
+    | { success: true }
+    | { success: false; error: string };
+
+export async function uploadMediaAction(formData: FormData): Promise<UploadResult> {
+    const files = formData.getAll('media') as File[];
+
+    if (files.length === 0 || !files[0].name) {
+        return { success: false, error: 'No files uploaded' };
+    }
+
+    // Check total size of all files
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    const maxSize = 500 * 1024 * 1024; // 500MB in bytes
+
+    if (totalSize > maxSize) {
+        const sizeMB = Math.round(totalSize / (1024 * 1024));
+        return {
+            success: false,
+            error: `Upload size (${sizeMB}MB) exceeds the 500MB limit. Try uploading fewer files or compress your videos.`
+        };
+    }
+
+    try {
+        for (const file of files) {
+            if (!file.name) continue;
+
+            const isVideo = file.type.startsWith('video/');
+            const isImage = file.type.startsWith('image/');
+
+            if (!isVideo && !isImage) {
+                return { success: false, error: `Unsupported file type: ${file.type}` };
+            }
+
+            let result;
+            if (isImage) {
+                result = await processImage(file, file.name);
+                createMediaEntry(
+                    result.original,
+                    result.display,
+                    result.thumbnail,
+                    'image'
+                );
+            } else {
+                result = await processVideo(file, file.name);
+                createMediaEntry(
+                    result.original,
+                    result.display,
+                    result.thumbnail,
+                    'video'
+                );
+            }
+        }
+    } catch (error) {
+        console.error('Upload processing error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Upload failed. Please try again.'
+        };
+    }
+
+    // redirect() throws NEXT_REDIRECT - don't catch it, let Next.js handle it
+    redirect('/media');
+}
