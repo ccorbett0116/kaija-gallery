@@ -63,6 +63,195 @@ export function listMedia(title?: string, date?: string): MediaEntry[] {
     return stmt.all(...params) as MediaEntry[];
 }
 
+// List media with pagination and optional date jump
+export function listMediaPaginated(options: {
+    limit?: number;
+    offset?: number;
+    jumpToDate?: string; // ISO date string - loads media from this date onwards
+}): { media: MediaEntry[]; hasMore: boolean; total: number } {
+    const limit = options.limit || 50;
+    const offset = options.offset || 0;
+
+    let query = `
+        SELECT media_id, title, date, file_path_original, file_path_thumb,
+               file_path_display, media_type, sort_order, uploaded_at, transcoding_status
+        FROM media
+    `;
+    const params: any[] = [];
+
+    if (options.jumpToDate) {
+        // Jump to specific date - find media on or before this date
+        query += ' WHERE uploaded_at <= ?';
+        params.push(options.jumpToDate);
+    }
+
+    query += ' ORDER BY uploaded_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const stmt = db.prepare(query);
+    const media = stmt.all(...params) as MediaEntry[];
+
+    // Get total count for hasMore calculation
+    let countQuery = 'SELECT COUNT(*) as count FROM media';
+    const countParams: any[] = [];
+
+    if (options.jumpToDate) {
+        countQuery += ' WHERE uploaded_at <= ?';
+        countParams.push(options.jumpToDate);
+    }
+
+    const countStmt = db.prepare(countQuery);
+    const { count } = countStmt.get(...countParams) as { count: number };
+
+    return {
+        media,
+        hasMore: offset + media.length < count,
+        total: count,
+    };
+}
+
+// List media for bi-directional infinite scroll
+export function listMediaBidirectional(options: {
+    limit?: number;
+    olderThan?: string; // Load items older than this timestamp
+    newerThan?: string; // Load items newer than this timestamp
+    jumpToDate?: string; // Jump to specific date
+    jumpToBottom?: boolean; // Jump to oldest items
+}): { media: MediaEntry[]; hasMoreOlder: boolean; hasMoreNewer: boolean } {
+    const limit = options.limit || 50;
+
+    let query = `
+        SELECT media_id, title, date, file_path_original, file_path_thumb,
+               file_path_display, media_type, sort_order, uploaded_at, transcoding_status
+        FROM media
+    `;
+    const params: any[] = [];
+
+    if (options.newerThan) {
+        // Loading newer items (scrolling up) - get items after this timestamp
+        query += ' WHERE uploaded_at > ?';
+        params.push(options.newerThan);
+        query += ' ORDER BY uploaded_at ASC LIMIT ?'; // ASC to get closest items first
+        params.push(limit);
+
+        const stmt = db.prepare(query);
+        const media = stmt.all(...params) as MediaEntry[];
+
+        // Reverse to maintain DESC order in UI
+        media.reverse();
+
+        // Check if there are more newer items
+        const newestStmt = db.prepare('SELECT MAX(uploaded_at) as max FROM media');
+        const { max: newestTimestamp } = newestStmt.get() as { max: string };
+        const hasMoreNewer = media.length > 0 && media[0].uploaded_at < newestTimestamp;
+
+        // Check if there are older items
+        const oldestInResult = media[media.length - 1]?.uploaded_at;
+        const hasMoreOlder = oldestInResult ? checkHasOlderItems(oldestInResult) : false;
+
+        return { media, hasMoreNewer, hasMoreOlder };
+    } else if (options.olderThan) {
+        // Loading older items (scrolling down) - get items before this timestamp
+        query += ' WHERE uploaded_at < ?';
+        params.push(options.olderThan);
+        query += ' ORDER BY uploaded_at DESC LIMIT ?';
+        params.push(limit);
+
+        const stmt = db.prepare(query);
+        const media = stmt.all(...params) as MediaEntry[];
+
+        // Check if there are more older items
+        const oldestInResult = media[media.length - 1]?.uploaded_at;
+        const hasMoreOlder = oldestInResult ? checkHasOlderItems(oldestInResult) : false;
+
+        // Check if there are newer items
+        const newestInResult = media[0]?.uploaded_at;
+        const hasMoreNewer = newestInResult ? checkHasNewerItems(newestInResult) : false;
+
+        return { media, hasMoreNewer, hasMoreOlder };
+    } else if (options.jumpToBottom) {
+        // Jump to bottom - get oldest items
+        query += ' ORDER BY uploaded_at ASC LIMIT ?'; // ASC to get oldest first
+        params.push(limit);
+
+        const stmt = db.prepare(query);
+        const media = stmt.all(...params) as MediaEntry[];
+
+        // Reverse to maintain DESC order in UI
+        media.reverse();
+
+        const oldestInResult = media[media.length - 1]?.uploaded_at;
+        const newestInResult = media[0]?.uploaded_at;
+        const hasMoreOlder = false; // At the bottom, can't go older
+        const hasMoreNewer = newestInResult ? checkHasNewerItems(newestInResult) : false;
+
+        return { media, hasMoreNewer, hasMoreOlder };
+    } else if (options.jumpToDate) {
+        // Jump to specific date
+        query += ' WHERE uploaded_at <= ?';
+        params.push(options.jumpToDate);
+        query += ' ORDER BY uploaded_at DESC LIMIT ?';
+        params.push(limit);
+
+        const stmt = db.prepare(query);
+        const media = stmt.all(...params) as MediaEntry[];
+
+        // Check both directions
+        const oldestInResult = media[media.length - 1]?.uploaded_at;
+        const newestInResult = media[0]?.uploaded_at;
+        const hasMoreOlder = oldestInResult ? checkHasOlderItems(oldestInResult) : false;
+        const hasMoreNewer = newestInResult ? checkHasNewerItems(newestInResult) : false;
+
+        return { media, hasMoreNewer, hasMoreOlder };
+    } else {
+        // Initial load - get most recent items
+        query += ' ORDER BY uploaded_at DESC LIMIT ?';
+        params.push(limit);
+
+        const stmt = db.prepare(query);
+        const media = stmt.all(...params) as MediaEntry[];
+
+        const oldestInResult = media[media.length - 1]?.uploaded_at;
+        const hasMoreOlder = oldestInResult ? checkHasOlderItems(oldestInResult) : false;
+        const hasMoreNewer = false; // Initial load starts at newest, can't go newer
+
+        return { media, hasMoreNewer, hasMoreOlder };
+    }
+}
+
+// Helper: Check if there are older items than given timestamp
+function checkHasOlderItems(timestamp: string): boolean {
+    const stmt = db.prepare('SELECT COUNT(*) as count FROM media WHERE uploaded_at < ?');
+    const { count } = stmt.get(timestamp) as { count: number };
+    return count > 0;
+}
+
+// Helper: Check if there are newer items than given timestamp
+function checkHasNewerItems(timestamp: string): boolean {
+    const stmt = db.prepare('SELECT COUNT(*) as count FROM media WHERE uploaded_at > ?');
+    const { count } = stmt.get(timestamp) as { count: number };
+    return count > 0;
+}
+
+// Get total media count
+export function getTotalMediaCount(): number {
+    const stmt = db.prepare('SELECT COUNT(*) as count FROM media');
+    const { count } = stmt.get() as { count: number };
+    return count;
+}
+
+// Get media items by index range (for virtual scrolling)
+export function getMediaByRange(offset: number, limit: number): MediaEntry[] {
+    const stmt = db.prepare(`
+        SELECT media_id, title, date, file_path_original, file_path_thumb,
+               file_path_display, media_type, sort_order, uploaded_at, transcoding_status
+        FROM media
+        ORDER BY uploaded_at DESC
+        LIMIT ? OFFSET ?
+    `);
+    return stmt.all(limit, offset) as MediaEntry[];
+}
+
 // Process image from existing file path (for chunked uploads)
 export async function processImageFromPath(
     originalPath: string,
