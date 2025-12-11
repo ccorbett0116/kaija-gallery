@@ -71,4 +71,11 @@ try {
   // Column already exists, ignore
 }
 
+// Add field_type column to fields table (migration)
+try {
+  db.exec(`ALTER TABLE fields ADD COLUMN field_type TEXT DEFAULT 'text'`);
+} catch (e) {
+  // Column already exists, ignore
+}
+
 export default db;
