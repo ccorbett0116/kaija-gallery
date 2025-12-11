@@ -78,4 +78,29 @@ try {
   // Column already exists, ignore
 }
 
+// Create date_media join table for many-to-many relationship
+db.exec(`
+CREATE TABLE IF NOT EXISTS date_media (
+  title      TEXT NOT NULL,
+  date       TEXT NOT NULL,
+  media_id   INTEGER NOT NULL,
+  added_at   TEXT NOT NULL,
+  display_order INTEGER DEFAULT 0,
+  PRIMARY KEY (title, date, media_id),
+  FOREIGN KEY (title, date)
+    REFERENCES date_entries (title, date)
+    ON DELETE CASCADE,
+  FOREIGN KEY (media_id)
+    REFERENCES media (media_id)
+    ON DELETE CASCADE
+);
+`);
+
+// Add display_order column to existing date_media table (migration)
+try {
+  db.exec(`ALTER TABLE date_media ADD COLUMN display_order INTEGER DEFAULT 0`);
+} catch (e) {
+  // Column already exists, ignore
+}
+
 export default db;

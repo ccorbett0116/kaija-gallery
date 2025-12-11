@@ -142,10 +142,8 @@ export default function UploadForm() {
             if ('wakeLock' in navigator) {
                 wakeLockRef.current = await navigator.wakeLock.request('screen');
                 setWakeLockActive(true);
-                console.log('Wake Lock activated - screen will stay awake');
 
                 wakeLockRef.current.addEventListener('release', () => {
-                    console.log('Wake Lock released');
                     setWakeLockActive(false);
                 });
             }
@@ -209,7 +207,6 @@ export default function UploadForm() {
         const largeImages = files.filter(f => f.type.startsWith('image/') && f.size >= CHUNK_THRESHOLD);
         const videos = files.filter(f => f.type.startsWith('video/'));
 
-        console.log(`Upload breakdown: ${smallImages.length} small images, ${largeImages.length} large images, ${videos.length} videos`);
 
         startTransition(async () => {
             try {
@@ -248,9 +245,7 @@ export default function UploadForm() {
                 }
 
                 // Upload videos via chunked upload
-                console.log(`Starting video uploads: ${videos.length} videos`);
                 for (const video of videos) {
-                    console.log(`Uploading video: ${video.name} (${video.size} bytes)`);
                     await uploadMediaInChunks(video, 'video', (progress, status = 'uploading') => {
                         setUploadProgress(prev => {
                             const existing = prev.find(p => p.fileName === video.name);

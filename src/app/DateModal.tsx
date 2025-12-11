@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { DateEntryWithFields } from '@/lib/dates';
+import type { MediaEntry } from '@/lib/media';
 
 type Props = {
     title: string;
@@ -10,9 +12,13 @@ type Props = {
 };
 
 export default function DateModal({ title, date, onClose }: Props) {
+    const router = useRouter();
     const [dateEntry, setDateEntry] = useState<DateEntryWithFields | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [selectedMedia, setSelectedMedia] = useState<MediaEntry | null>(null);
 
     useEffect(() => {
         async function fetchDate() {
@@ -57,13 +63,45 @@ export default function DateModal({ title, date, onClose }: Props) {
         };
     }, []);
 
+    const handleEdit = () => {
+        router.push(`/dates/edit?title=${encodeURIComponent(title)}&date=${encodeURIComponent(date)}`);
+    };
+
+    const handleDelete = async () => {
+        if (!showDeleteConfirm) {
+            setShowDeleteConfirm(true);
+            return;
+        }
+
+        try {
+            setDeleting(true);
+            const response = await fetch('/api/dates', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, date }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete date');
+            }
+
+            // Close modal and refresh page
+            onClose();
+            router.refresh();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to delete');
+            setDeleting(false);
+            setShowDeleteConfirm(false);
+        }
+    };
+
     return (
         <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
         >
             <div
-                className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-lg shadow-2xl"
+                className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-lg shadow-2xl [&::-webkit-scrollbar]:hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Close Button */}
@@ -140,10 +178,121 @@ export default function DateModal({ title, date, onClose }: Props) {
                                     No additional details for this date.
                                 </div>
                             )}
+
+                            {/* Associated Media */}
+                            {dateEntry.media && dateEntry.media.length > 0 && (
+                                <div className="mt-6">
+                                    <h3 className="text-lg font-medium mb-3">Media</h3>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {dateEntry.media.map((item) => (
+                                            <button
+                                                key={item.media_id}
+                                                onClick={() => setSelectedMedia(item)}
+                                                className="relative aspect-square rounded-lg overflow-hidden bg-slate-800 hover:opacity-90 transition-opacity cursor-pointer"
+                                            >
+                                                {item.media_type === 'image' && item.file_path_thumb && (
+                                                    <img
+                                                        src={`/api/media/${item.file_path_thumb}`}
+                                                        alt=""
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                )}
+                                                {item.media_type === 'video' && item.file_path_thumb && (
+                                                    <div className="relative w-full h-full">
+                                                        <img
+                                                            src={`/api/media/${item.file_path_thumb}`}
+                                                            alt=""
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                            <div className="rounded-full bg-black/50 p-3">
+                                                                <svg
+                                                                    className="w-8 h-8 text-white"
+                                                                    fill="currentColor"
+                                                                    viewBox="0 0 20 20"
+                                                                >
+                                                                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                                                                </svg>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="mt-8 pt-6 border-t border-slate-700 flex gap-3">
+                                <button
+                                    onClick={handleEdit}
+                                    className="flex-1 px-4 py-2 bg-sky-600 hover:bg-sky-500 rounded-lg font-medium transition-colors"
+                                    disabled={deleting}
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                                        showDeleteConfirm
+                                            ? 'bg-red-600 hover:bg-red-500'
+                                            : 'bg-slate-700 hover:bg-slate-600'
+                                    }`}
+                                    disabled={deleting}
+                                >
+                                    {deleting ? 'Deleting...' : showDeleteConfirm ? 'Confirm Delete?' : 'Delete'}
+                                </button>
+                                {showDeleteConfirm && (
+                                    <button
+                                        onClick={() => setShowDeleteConfirm(false)}
+                                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium transition-colors"
+                                        disabled={deleting}
+                                    >
+                                        Cancel
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
             </div>
+
+            {/* Media Modal */}
+            {selectedMedia && (
+                <div
+                    className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedMedia(null);
+                    }}
+                >
+                    <button
+                        onClick={() => setSelectedMedia(null)}
+                        className="absolute top-4 right-4 text-white hover:text-slate-300 text-4xl leading-none"
+                        aria-label="Close"
+                    >
+                        &times;
+                    </button>
+
+                    <div className="max-w-7xl max-h-full" onClick={(e) => e.stopPropagation()}>
+                        {selectedMedia.media_type === 'image' ? (
+                            <img
+                                src={`/api/media/${selectedMedia.file_path_display}`}
+                                alt=""
+                                className="max-w-full max-h-[90vh] object-contain"
+                            />
+                        ) : (
+                            <video
+                                controls
+                                autoPlay
+                                className="max-w-full max-h-[90vh]"
+                                src={`/api/media/${selectedMedia.file_path_display}`}
+                            />
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

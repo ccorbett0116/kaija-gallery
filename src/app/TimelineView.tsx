@@ -86,7 +86,7 @@ export default function TimelineView({ dates }: Props) {
 
     // On small screens, show cards on inside of bend instead of outside
     const isSmallScreen = dimensions.width < 740;
-    const CARD_OFFSET = isSmallScreen ? Math.max(36, 48 * SCALE) : Math.max(8, 12 * SCALE); // More space when inside
+    const CARD_OFFSET = isSmallScreen ? Math.max(48, 60 * SCALE) : Math.max(8, 12 * SCALE); // More space when inside
 
     // Calculate position along S-curve for a given index
     const getPositionForIndex = (index: number) => {
@@ -165,8 +165,8 @@ export default function TimelineView({ dates }: Props) {
     return (
         <div
             ref={containerRef}
-            className="relative overflow-y-auto overflow-x-hidden"
-            style={{ height: 'calc(100vh - 64px)', scrollbarWidth: 'thin' }}
+            className="relative overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden"
+            style={{ height: 'calc(100vh - 64px)' }}
         >
             <div
                 className="relative mx-auto"
@@ -221,8 +221,9 @@ export default function TimelineView({ dates }: Props) {
                                 {/* Date Card */}
                                 <button
                                     onClick={() => handleOpenDate(date.title, date.date)}
-                                    className="absolute top-1/2 -translate-y-1/2 whitespace-nowrap cursor-pointer"
+                                    className="absolute whitespace-nowrap cursor-pointer"
                                     style={{
+                                        top: '50%',
                                         left: isLeftSide ? `-${CARD_OFFSET}px` : `${PIN_SIZE + CARD_OFFSET}px`,
                                         transform: isLeftSide
                                             ? 'translate(-100%, -50%)'
@@ -230,7 +231,7 @@ export default function TimelineView({ dates }: Props) {
                                     }}
                                 >
                                     <div
-                                        className="bg-slate-900 border border-slate-700 rounded-lg shadow-xl hover:border-sky-500 transition-colors"
+                                        className="bg-slate-900 border border-slate-700 rounded-lg shadow-xl hover:border-sky-500 transition-colors overflow-hidden"
                                         style={{
                                             paddingLeft: CARD_PADDING_X,
                                             paddingRight: CARD_PADDING_X,
@@ -238,6 +239,36 @@ export default function TimelineView({ dates }: Props) {
                                             paddingBottom: CARD_PADDING_Y,
                                         }}
                                     >
+                                        {/* Media Thumbnail */}
+                                        {date.first_media_thumb && (
+                                            <div
+                                                className="mb-2 rounded overflow-hidden bg-slate-800 relative"
+                                                style={{
+                                                    width: Math.max(80, 120 * SCALE),
+                                                    height: Math.max(60, 90 * SCALE),
+                                                }}
+                                            >
+                                                <img
+                                                    src={`/api/media/${date.first_media_thumb}`}
+                                                    alt=""
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                {date.first_media_type === 'video' && (
+                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                        <div className="w-6 h-6 rounded-full bg-black/60 flex items-center justify-center">
+                                                            <svg
+                                                                className="w-3 h-3 text-white ml-0.5"
+                                                                fill="currentColor"
+                                                                viewBox="0 0 16 16"
+                                                            >
+                                                                <path d="M4 3l8 5-8 5V3z" />
+                                                            </svg>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
                                         <div
                                             className="font-medium"
                                             style={{ fontSize: TITLE_SIZE }}

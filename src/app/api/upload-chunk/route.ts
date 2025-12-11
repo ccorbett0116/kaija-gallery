@@ -170,7 +170,6 @@ async function assembleFile(uploadId: string, filename: string, totalChunks: num
             'completed'
         );
 
-        console.log(`Image assembled and processed: ${uniqueFilename}`);
     } else {
         // Video: Insert into database with pending transcoding status
         const stmt = db.prepare(`
@@ -194,7 +193,6 @@ async function assembleFile(uploadId: string, filename: string, totalChunks: num
 
         const mediaId = Number(result.lastInsertRowid);
 
-        console.log(`Video assembled and saved: ${uniqueFilename} (media_id: ${mediaId})`);
 
         // Trigger transcoding in background (don't await)
         console.log('Triggering background transcoding...');

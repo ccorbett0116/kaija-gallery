@@ -378,7 +378,6 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
     const prevColumnsRef = useRef(COLUMNS);
     useEffect(() => {
         if (prevColumnsRef.current !== COLUMNS && prevColumnsRef.current !== 0) {
-            console.log(`[MediaGridVirtual] Columns changed from ${prevColumnsRef.current} to ${COLUMNS}, clearing cache`);
             store.items.clear();
             notifySubscribers(store);
             initialLoadDoneRef.current = false;
@@ -404,14 +403,12 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
             if (data.type === 'status-change') {
                 const { mediaId } = data;
 
-                console.log('[MediaGridVirtual] SSE received:', data);
 
                 // Find the index of this media item in the store
                 let foundIndex = -1;
                 for (const [index, item] of store.items) {
                     if (item.media_id === mediaId) {
                         foundIndex = index;
-                        console.log('[MediaGridVirtual] Found item at index:', foundIndex);
                         break;
                     }
                 }
@@ -423,14 +420,12 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                         const result = await response.json();
 
                         if (result.media) {
-                            console.log('[MediaGridVirtual] Updating item:', result.media);
                             updateItem(store, foundIndex, result.media);
                         }
                     } catch (err) {
                         console.error('Failed to update transcoded item:', err);
                     }
                 } else {
-                    console.log('[MediaGridVirtual] Item not in cache, media_id:', mediaId);
                 }
             }
         };

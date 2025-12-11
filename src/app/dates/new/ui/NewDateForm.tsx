@@ -2,8 +2,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createDateAction } from '../actions';
 import type { FieldType, FieldDefinition } from '@/lib/dates';
+import MediaSelector from './MediaSelector';
 
 type PhotonFeature = {
     properties: {
@@ -191,13 +191,47 @@ const FIELD_TYPE_OPTIONS: { value: FieldType; label: string }[] = [
     { value: 'address', label: 'Address' },
 ];
 
-export default function NewDateForm() {
-    const [fields, setFields] = useState<FieldRow[]>([
-        { id: 1, name: '', value: '', type: 'text', isExisting: false },
-    ]);
+type InitialField = {
+    name: string;
+    value: string;
+    type: FieldType;
+};
+
+type NewDateFormProps = {
+    action: (formData: FormData) => Promise<void>;
+    initialTitle?: string;
+    initialDate?: string;
+    initialFields?: InitialField[];
+    initialMediaIds?: number[];
+    submitLabel?: string;
+};
+
+export default function NewDateForm({
+    action,
+    initialTitle = '',
+    initialDate = '',
+    initialFields = [],
+    initialMediaIds = [],
+    submitLabel = 'Save Date',
+}: NewDateFormProps) {
+    const [title, setTitle] = useState(initialTitle);
+    const [date, setDate] = useState(initialDate);
+    const [fields, setFields] = useState<FieldRow[]>(() => {
+        if (initialFields.length > 0) {
+            return initialFields.map((f, index) => ({
+                id: index + 1,
+                name: f.name,
+                value: f.value,
+                type: f.type,
+                isExisting: true, // Fields from DB are considered existing
+            }));
+        }
+        return [{ id: 1, name: '', value: '', type: 'text', isExisting: false }];
+    });
     const [suggestions, setSuggestions] = useState<Map<number, FieldDefinition[]>>(new Map());
     const [activeSuggestions, setActiveSuggestions] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [selectedMediaIds, setSelectedMediaIds] = useState<number[]>(initialMediaIds);
 
     const addField = () => {
         setFields((prev) => [
@@ -321,13 +355,15 @@ export default function NewDateForm() {
     };
 
     return (
-        <form action={createDateAction} onSubmit={handleSubmit} className="space-y-4">
+        <form action={action} onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="space-y-1">
                     <span className="text-sm">Title</span>
                     <input
                         name="title"
                         type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
                         className="w-full rounded-md bg-slate-900 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-sky-500"
                         required
                     />
@@ -338,6 +374,8 @@ export default function NewDateForm() {
                     <input
                         name="date"
                         type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
                         className="w-full rounded-md bg-slate-900 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-sky-500"
                         required
                     />
@@ -481,6 +519,18 @@ export default function NewDateForm() {
                 </p>
             </div>
 
+            {/* Media Selector */}
+            <div className="space-y-2">
+                <MediaSelector
+                    selectedIds={selectedMediaIds}
+                    onChange={setSelectedMediaIds}
+                />
+                {/* Hidden inputs for selected media IDs */}
+                {selectedMediaIds.map((id) => (
+                    <input key={id} type="hidden" name="mediaIds" value={id} />
+                ))}
+            </div>
+
             {error && (
                 <div className="rounded-md bg-red-900/20 border border-red-800 px-4 py-3 text-sm text-red-400">
                     {error}
@@ -491,7 +541,7 @@ export default function NewDateForm() {
                 type="submit"
                 className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium hover:bg-sky-500"
             >
-                Save Date
+                {submitLabel}
             </button>
         </form>
     );

@@ -27,8 +27,11 @@ export async function createDateAction(formData: FormData) {
         }
     }
 
+    // Collect selected media IDs
+    const mediaIds = formData.getAll('mediaIds').map((id) => Number(id));
+
     // Create the date entry in the database
-    createDateEntry(title.trim(), date, fields);
+    createDateEntry(title.trim(), date, fields, mediaIds);
 
     // Redirect to the home page after successful creation
     redirect('/');

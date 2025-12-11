@@ -14,12 +14,8 @@ export async function GET(request: NextRequest) {
                 encoder.encode(`data: ${JSON.stringify({ type: 'connected' })}\n\n`)
             );
 
-            console.log('[SSE] New client connected');
-            console.log('[SSE] Total listeners on status-change:', transcodeEvents.listenerCount('status-change'));
-
             // Listen for transcoding status changes
             const statusListener = (data: { mediaId: number; status: string }) => {
-                console.log('[SSE] Broadcasting to client:', data);
                 controller.enqueue(
                     encoder.encode(
                         `data: ${JSON.stringify({ type: 'status-change', ...data })}\n\n`
@@ -28,7 +24,6 @@ export async function GET(request: NextRequest) {
             };
 
             transcodeEvents.on('status-change', statusListener);
-            console.log('[SSE] Listener attached. Total listeners:', transcodeEvents.listenerCount('status-change'));
 
             // Cleanup on connection close
             request.signal.addEventListener('abort', () => {

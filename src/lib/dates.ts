@@ -1,11 +1,14 @@
 // src/lib/dates.ts
 import db from './db';
+import type { MediaEntry } from './media';
 
 export type DateEntry = {
     title: string;
     date: string; // ISO
     created_at: string;
     updated_at: string;
+    first_media_thumb?: string | null;
+    first_media_type?: 'image' | 'video' | null;
 };
 
 export type FieldType = 'text' | 'time' | 'date' | 'datetime-local' | 'number' | 'address';
@@ -26,17 +29,30 @@ export type DateFieldValue = {
 // Fetch recent dates for index page
 export function listDates(limit = 50): DateEntry[] {
     const stmt = db.prepare(`
-    SELECT title, date, created_at, updated_at
-    FROM date_entries
-    ORDER BY date DESC, title ASC
+    SELECT
+      de.title,
+      de.date,
+      de.created_at,
+      de.updated_at,
+      m.file_path_thumb as first_media_thumb,
+      m.media_type as first_media_type
+    FROM date_entries de
+    LEFT JOIN (
+      SELECT dm.title, dm.date, dm.media_id
+      FROM date_media dm
+      WHERE dm.display_order = 0
+    ) first_media ON de.title = first_media.title AND de.date = first_media.date
+    LEFT JOIN media m ON first_media.media_id = m.media_id
+    ORDER BY de.date DESC, de.title ASC
     LIMIT ?
   `);
     return stmt.all(limit) as DateEntry[];
 }
 
-// Fetch a single date entry with all its custom fields
+// Fetch a single date entry with all its custom fields and media
 export type DateEntryWithFields = DateEntry & {
     fields: DateFieldValue[];
+    media: MediaEntry[];
 };
 
 export function getDateEntry(title: string, date: string): DateEntryWithFields | null {
@@ -64,9 +80,30 @@ export function getDateEntry(title: string, date: string): DateEntryWithFields |
 
     const fields = fieldsStmt.all(title, date) as DateFieldValue[];
 
+    const mediaStmt = db.prepare(`
+    SELECT
+      m.media_id,
+      m.title,
+      m.date,
+      m.file_path_original,
+      m.file_path_thumb,
+      m.file_path_display,
+      m.media_type,
+      m.sort_order,
+      m.uploaded_at,
+      m.transcoding_status
+    FROM date_media dm
+    JOIN media m ON m.media_id = dm.media_id
+    WHERE dm.title = ? AND dm.date = ?
+    ORDER BY dm.display_order ASC, m.uploaded_at DESC
+  `);
+
+    const media = mediaStmt.all(title, date) as MediaEntry[];
+
     return {
         ...dateEntry,
-        fields
+        fields,
+        media
     };
 }
 
@@ -88,7 +125,8 @@ export type NewFieldInput = { name: string; value: string; type: FieldType };
 export function createDateEntry(
     title: string,
     date: string,
-    fields: NewFieldInput[]
+    fields: NewFieldInput[],
+    mediaIds: number[] = []
 ) {
     const now = new Date().toISOString();
 
@@ -112,6 +150,11 @@ export function createDateEntry(
     const insertValue = db.prepare(`
     INSERT INTO date_field_values (title, date, field_id, value)
     VALUES (?, ?, ?, ?)
+  `);
+
+    const insertDateMedia = db.prepare(`
+    INSERT INTO date_media (title, date, media_id, added_at, display_order)
+    VALUES (?, ?, ?, ?, ?)
   `);
 
     const tx = db.transaction(() => {
@@ -139,6 +182,109 @@ export function createDateEntry(
             }
 
             insertValue.run(title, date, fieldId, value);
+        }
+
+        // Associate media with this date (preserving order)
+        for (let i = 0; i < mediaIds.length; i++) {
+            insertDateMedia.run(title, date, mediaIds[i], now, i);
+        }
+    });
+
+    tx();
+}
+
+// Delete a date entry (cascades to fields and media via foreign keys)
+export function deleteDate(title: string, date: string) {
+    const deleteStmt = db.prepare(`
+    DELETE FROM date_entries
+    WHERE title = ? AND date = ?
+  `);
+    deleteStmt.run(title, date);
+}
+
+// Update a date entry (deletes and recreates field values and media associations)
+export function updateDateEntry(
+    originalTitle: string,
+    originalDate: string,
+    newTitle: string,
+    newDate: string,
+    fields: NewFieldInput[],
+    mediaIds: number[] = []
+) {
+    const now = new Date().toISOString();
+
+    const updateDate = db.prepare(`
+    UPDATE date_entries
+    SET title = ?, date = ?, updated_at = ?
+    WHERE title = ? AND date = ?
+  `);
+
+    const deleteFieldValues = db.prepare(`
+    DELETE FROM date_field_values
+    WHERE title = ? AND date = ?
+  `);
+
+    const deleteMediaAssociations = db.prepare(`
+    DELETE FROM date_media
+    WHERE title = ? AND date = ?
+  `);
+
+    const selectField = db.prepare(`
+    SELECT field_id, field_type FROM fields WHERE field_name = ?
+  `);
+
+    const insertField = db.prepare(`
+    INSERT INTO fields (field_name, field_type) VALUES (?, ?)
+  `);
+
+    const updateFieldType = db.prepare(`
+    UPDATE fields SET field_type = ? WHERE field_id = ?
+  `);
+
+    const insertValue = db.prepare(`
+    INSERT INTO date_field_values (title, date, field_id, value)
+    VALUES (?, ?, ?, ?)
+  `);
+
+    const insertDateMedia = db.prepare(`
+    INSERT INTO date_media (title, date, media_id, added_at, display_order)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+    const tx = db.transaction(() => {
+        // Delete existing field values and media associations
+        deleteFieldValues.run(originalTitle, originalDate);
+        deleteMediaAssociations.run(originalTitle, originalDate);
+
+        // Update the date entry
+        updateDate.run(newTitle, newDate, now, originalTitle, originalDate);
+
+        // Re-insert field values
+        for (const f of fields) {
+            const name = f.name.trim();
+            const value = f.value.trim();
+            const type = f.type || 'text';
+            if (!name || !value) continue;
+
+            let row = selectField.get(name) as { field_id: number; field_type: string } | undefined;
+            let fieldId: number;
+
+            if (!row) {
+                const info = insertField.run(name, type);
+                fieldId = Number(info.lastInsertRowid);
+            } else {
+                fieldId = row.field_id;
+                if (row.field_type !== type) {
+                    updateFieldType.run(type, fieldId);
+                }
+            }
+
+            insertValue.run(newTitle, newDate, fieldId, value);
+        }
+
+        // Re-insert media associations
+        for (let i = 0; i < mediaIds.length; i++) {
+            insertDateMedia.run(newTitle, newDate, mediaIds[i], now, i);
         }
     });
 
