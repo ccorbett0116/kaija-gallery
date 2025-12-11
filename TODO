@@ -1,3 +1,6 @@
+Bug adding dates. Sometimes being added with incorrect date (e.g. 11/11/1111 goes to 11/10/1111)
+Sometimes dates being displayed in wrong order (e.g. 11/11/2099 is before 11/11/111111)
+Dates with years < 2025 and > 2125 should throw an invalid date error
 Investigate jump to date functionality (should query for which media is most recent to that day (x), and jump to the highest multiple of num columns (y) s.t. y<x
 Change Location API to Google Maps API
 Maybe try to use the metadata from media of when it was taken, fallback to upload date
