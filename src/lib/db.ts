@@ -62,6 +62,14 @@ CREATE TABLE IF NOT EXISTS media (
     REFERENCES date_entries (title, date)
     ON DELETE SET NULL                   -- unlink media if date is deleted
 );
+
+CREATE TABLE IF NOT EXISTS ideas (
+  idea_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+  title       TEXT NOT NULL,
+  content     TEXT,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
 `);
 
 // Add transcoding_status column to existing tables (migration)

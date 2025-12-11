@@ -15,20 +15,16 @@ export default function TimelineView({ dates }: Props) {
     const searchParams = useSearchParams();
     const [scrollY, setScrollY] = useState(0);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-    const [selectedDate, setSelectedDate] = useState<{ title: string; date: string } | null>(null);
 
-    // Check URL params on mount for shareable links
-    useEffect(() => {
-        const title = searchParams.get('title');
-        const date = searchParams.get('date');
-        if (title && date) {
-            setSelectedDate({ title: decodeURIComponent(title), date: decodeURIComponent(date) });
-        }
-    }, [searchParams]);
+    // Derive selectedDate directly from URL search parameters
+    const titleFromUrl = searchParams.get('title');
+    const dateFromUrl = searchParams.get('date');
+    const selectedDate = (titleFromUrl && dateFromUrl)
+        ? { title: decodeURIComponent(titleFromUrl), date: decodeURIComponent(dateFromUrl) }
+        : null;
 
     // Update URL when modal opens/closes
     const handleOpenDate = (title: string, date: string) => {
-        setSelectedDate({ title, date });
         const params = new URLSearchParams();
         params.set('title', title);
         params.set('date', date);
@@ -36,7 +32,6 @@ export default function TimelineView({ dates }: Props) {
     };
 
     const handleCloseDate = () => {
-        setSelectedDate(null);
         router.push('/', { scroll: false });
     };
 

@@ -47,7 +47,7 @@ export default function HomePage() {
               {dates.length === 0 ? (
                   <div className="flex items-center justify-center h-[calc(100vh-64px)]">
                       <p className="text-slate-400 text-sm">
-                          No dates yet. Click "Add Date" to create the first one.
+                          No dates yet. Click &quot;Add Date&quot; to create the first one.
                       </p>
                   </div>
               ) : (

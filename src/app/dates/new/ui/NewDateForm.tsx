@@ -318,7 +318,7 @@ export default function NewDateForm({
         return () => {
             timers.forEach((timer) => clearTimeout(timer));
         };
-    }, [fields.map((f) => `${f.id}:${f.name}`).join('|'), searchFieldSuggestions]);
+    }, [fields, searchFieldSuggestions]);
 
     const selectSuggestion = (fieldId: number, suggestion: FieldDefinition) => {
         setFields((prev) =>
