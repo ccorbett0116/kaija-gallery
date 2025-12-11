@@ -169,7 +169,7 @@ export default function DateModal({ title, date, onClose }: Props) {
                                             <div className="text-sm font-medium text-slate-400 mb-1">
                                                 {field.field_name}
                                             </div>
-                                            <div className="text-slate-100">
+                                            <div className="text-slate-100 whitespace-pre-wrap">
                                                 {formatFieldValue(field.value, field.field_type)}
                                             </div>
                                         </div>
