@@ -23,6 +23,8 @@ export default function TimelineView({ dates }: Props) {
     const searchParams = useSearchParams();
     const [scrollY, setScrollY] = useState(0);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+    const [showScrollTop, setShowScrollTop] = useState(false);
+    const [showScrollBottom, setShowScrollBottom] = useState(false);
 
     // Derive selectedDate directly from URL search parameters
     const titleFromUrl = searchParams.get('title');
@@ -43,6 +45,22 @@ export default function TimelineView({ dates }: Props) {
         router.push('/', { scroll: false });
     };
 
+    const scrollToTop = () => {
+        containerRef.current?.scrollTo({
+            top: 0,
+            behavior: 'smooth',
+        });
+    };
+
+    const scrollToBottom = () => {
+        if (containerRef.current) {
+            containerRef.current.scrollTo({
+                top: containerRef.current.scrollHeight,
+                behavior: 'smooth',
+            });
+        }
+    };
+
     // Track window size for responsive scaling
     useEffect(() => {
         const updateDimensions = () => {
@@ -60,12 +78,20 @@ export default function TimelineView({ dates }: Props) {
     useEffect(() => {
         const handleScroll = () => {
             if (containerRef.current) {
-                setScrollY(containerRef.current.scrollTop);
+                const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+                setScrollY(scrollTop);
+
+                // Show scroll to top button when scrolled down more than 200px
+                setShowScrollTop(scrollTop > 200);
+
+                // Show scroll to bottom button when not at bottom (with 50px threshold)
+                setShowScrollBottom(scrollTop + clientHeight < scrollHeight - 50);
             }
         };
 
         const container = containerRef.current;
         if (container) {
+            handleScroll(); // Initial check
             container.addEventListener('scroll', handleScroll);
             return () => container.removeEventListener('scroll', handleScroll);
         }
@@ -303,6 +329,52 @@ export default function TimelineView({ dates }: Props) {
                     onClose={handleCloseDate}
                 />
             )}
+
+            {/* Scroll Buttons */}
+            <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-10">
+                {showScrollTop && (
+                    <button
+                        onClick={scrollToTop}
+                        className="p-3 rounded-full bg-slate-800 border border-slate-700 hover:border-sky-500 hover:bg-slate-700 transition-colors shadow-lg"
+                        aria-label="Scroll to top"
+                    >
+                        <svg
+                            className="w-5 h-5 text-sky-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 15l7-7 7 7"
+                            />
+                        </svg>
+                    </button>
+                )}
+                {showScrollBottom && (
+                    <button
+                        onClick={scrollToBottom}
+                        className="p-3 rounded-full bg-slate-800 border border-slate-700 hover:border-sky-500 hover:bg-slate-700 transition-colors shadow-lg"
+                        aria-label="Scroll to bottom"
+                    >
+                        <svg
+                            className="w-5 h-5 text-sky-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                            />
+                        </svg>
+                    </button>
+                )}
+            </div>
         </div>
     );
 }

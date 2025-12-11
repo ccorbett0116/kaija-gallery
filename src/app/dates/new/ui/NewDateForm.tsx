@@ -5,19 +5,23 @@ import { useState, useEffect, useCallback } from 'react';
 import type { FieldType, FieldDefinition } from '@/lib/dates';
 import MediaSelector from './MediaSelector';
 
-type PhotonFeature = {
-    properties: {
-        osm_id: number;
-        name?: string;
-        street?: string;
-        housenumber?: string;
-        postcode?: string;
-        city?: string;
-        state?: string;
-        country?: string;
-        osm_key?: string;
-        osm_value?: string;
+type GooglePlacesSuggestion = {
+    placePrediction?: {
+        placeId: string;
+        text: {
+            text: string;
+        };
     };
+    queryPrediction?: {
+        text: {
+            text: string;
+        };
+    };
+};
+
+// Generate a random session token for grouping autocomplete requests
+const generateSessionToken = () => {
+    return `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
 };
 
 // Address input component with autocomplete
@@ -33,38 +37,8 @@ function AddressInput({
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
-    const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
-
-    const formatAddress = (props: PhotonFeature['properties']): string => {
-        const parts: string[] = [];
-
-        // If it's a named place (restaurant, business, etc.)
-        if (props.name) {
-            parts.push(props.name);
-        }
-
-        // Add street address
-        if (props.housenumber && props.street) {
-            parts.push(`${props.housenumber} ${props.street}`);
-        } else if (props.street) {
-            parts.push(props.street);
-        }
-
-        // Add locality
-        if (props.city) {
-            parts.push(props.city);
-        }
-
-        if (props.state) {
-            parts.push(props.state);
-        }
-
-        if (props.country) {
-            parts.push(props.country);
-        }
-
-        return parts.join(', ');
-    };
+    const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+    const [sessionToken] = useState(() => generateSessionToken());
 
     // Get user's location on mount
     useEffect(() => {
@@ -73,8 +47,8 @@ function AddressInput({
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     setUserLocation({
-                        lat: position.coords.latitude,
-                        lon: position.coords.longitude,
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
                     });
                 },
                 async () => {
@@ -84,8 +58,8 @@ function AddressInput({
                         const data = await response.json();
                         if (data.latitude && data.longitude) {
                             setUserLocation({
-                                lat: data.latitude,
-                                lon: data.longitude,
+                                latitude: data.latitude,
+                                longitude: data.longitude,
                             });
                         }
                     } catch (err) {
@@ -104,18 +78,54 @@ function AddressInput({
 
         setIsSearching(true);
         try {
-            // Build URL with optional location biasing
-            let url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8`;
+            const requestBody: {
+                input: string;
+                sessionToken: string;
+                locationBias?: {
+                    circle: {
+                        center: { latitude: number; longitude: number };
+                        radius: number;
+                    };
+                };
+            } = {
+                input: query,
+                sessionToken: sessionToken,
+            };
 
+            // Add location biasing if user location is available
             if (userLocation) {
-                url += `&lat=${userLocation.lat}&lon=${userLocation.lon}`;
+                requestBody.locationBias = {
+                    circle: {
+                        center: userLocation,
+                        radius: 50000, // 50km radius (in meters)
+                    },
+                };
             }
 
-            const response = await fetch(url);
+            const response = await fetch('/api/places-autocomplete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+            });
+
+            if (!response.ok) {
+                throw new Error(`Places API error: ${response.status}`);
+            }
+
             const data = await response.json();
 
-            const results = data.features
-                .map((feature: PhotonFeature) => formatAddress(feature.properties))
+            // Extract text from both place and query predictions
+            const results = (data.suggestions || [])
+                .map((suggestion: GooglePlacesSuggestion) => {
+                    if (suggestion.placePrediction) {
+                        return suggestion.placePrediction.text.text;
+                    } else if (suggestion.queryPrediction) {
+                        return suggestion.queryPrediction.text.text;
+                    }
+                    return '';
+                })
                 .filter((addr: string) => addr.length > 0);
 
             setSuggestions(results);
@@ -125,7 +135,7 @@ function AddressInput({
         } finally {
             setIsSearching(false);
         }
-    }, [userLocation]);
+    }, [userLocation, sessionToken]);
 
     // Debounced search
     useEffect(() => {
@@ -314,6 +324,9 @@ export default function NewDateForm({
     }, []);
 
     // Debounced search - only search when field name changes
+    // Create a dependency that only includes field IDs and names
+    const fieldNames = fields.map((f) => `${f.id}:${f.name}`).join('|');
+
     useEffect(() => {
         const timers = new Map<number, NodeJS.Timeout>();
 
@@ -327,7 +340,8 @@ export default function NewDateForm({
         return () => {
             timers.forEach((timer) => clearTimeout(timer));
         };
-    }, [fields, searchFieldSuggestions]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fieldNames, searchFieldSuggestions]);
 
     const selectSuggestion = (fieldId: number, suggestion: FieldDefinition) => {
         setFields((prev) =>
