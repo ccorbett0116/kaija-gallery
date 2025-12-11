@@ -11,6 +11,15 @@ type Props = {
     onClose: () => void;
 };
 
+const formatDisplayDate = (isoDate: string) =>
+    // Use noon UTC to avoid local timezone shifting the day
+    new Date(`${isoDate}T12:00:00Z`).toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    });
+
 export default function DateModal({ title, date, onClose }: Props) {
     const router = useRouter();
     const [dateEntry, setDateEntry] = useState<DateEntryWithFields | null>(null);
@@ -145,12 +154,7 @@ export default function DateModal({ title, date, onClose }: Props) {
                             <div className="mb-6">
                                 <h2 className="text-2xl font-semibold mb-2">{dateEntry.title}</h2>
                                 <div className="text-slate-400 text-sm">
-                                    {new Date(dateEntry.date).toLocaleDateString('en-US', {
-                                        weekday: 'long',
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric',
-                                    })}
+                                    {formatDisplayDate(dateEntry.date)}
                                 </div>
                             </div>
 
@@ -301,7 +305,7 @@ export default function DateModal({ title, date, onClose }: Props) {
 function formatFieldValue(value: string, type: string): string {
     switch (type) {
         case 'date':
-            return new Date(value).toLocaleDateString('en-US', {
+            return new Date(`${value}T12:00:00Z`).toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',

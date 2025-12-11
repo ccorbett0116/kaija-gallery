@@ -233,6 +233,15 @@ export default function NewDateForm({
     const [error, setError] = useState<string | null>(null);
     const [selectedMediaIds, setSelectedMediaIds] = useState<number[]>(initialMediaIds);
 
+    useEffect(() => {
+        // Auto-resize any textareas on initial render and whenever fields change
+        const autosizeElements = document.querySelectorAll<HTMLTextAreaElement>('[data-auto-resize="true"]');
+        autosizeElements.forEach((el) => {
+            el.style.height = 'auto';
+            el.style.height = `${el.scrollHeight}px`;
+        });
+    }, [fields]);
+
     const addField = () => {
         setFields((prev) => [
             ...prev,
@@ -333,6 +342,40 @@ export default function NewDateForm({
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         setError(null);
+
+        const trimmedDate = date.trim();
+        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+        if (!datePattern.test(trimmedDate)) {
+            e.preventDefault();
+            setError('Please enter a valid date in YYYY-MM-DD format.');
+            return;
+        }
+
+        const [yearStr, monthStr, dayStr] = trimmedDate.split('-');
+        const year = Number(yearStr);
+        const month = Number(monthStr);
+        const day = Number(dayStr);
+        const MIN_YEAR = 2025;
+        const MAX_YEAR = 2125;
+
+        const utcDate = new Date(Date.UTC(year, month - 1, day));
+        const isValidDate =
+            !Number.isNaN(utcDate.getTime()) &&
+            utcDate.getUTCFullYear() === year &&
+            utcDate.getUTCMonth() === month - 1 &&
+            utcDate.getUTCDate() === day;
+
+        if (!isValidDate) {
+            e.preventDefault();
+            setError('Please enter a real calendar date.');
+            return;
+        }
+
+        if (year < MIN_YEAR || year > MAX_YEAR) {
+            e.preventDefault();
+            setError(`Year must be between ${MIN_YEAR} and ${MAX_YEAR}.`);
+            return;
+        }
 
         // Get all non-empty field names
         const fieldNames = fields
@@ -485,6 +528,7 @@ export default function NewDateForm({
                                                 target.style.height = target.scrollHeight + 'px';
                                             }}
                                             rows={1}
+                                            data-auto-resize="true"
                                             className="rounded-md bg-slate-900 border border-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring focus:ring-sky-500 resize-none overflow-hidden"
                                             style={{ minHeight: '34px' }}
                                         />

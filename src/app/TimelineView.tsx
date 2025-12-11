@@ -9,6 +9,14 @@ type Props = {
     dates: DateEntry[];
 };
 
+const formatDisplayDate = (isoDate: string) =>
+    // Use noon UTC to avoid local timezone shifting the day backward/forward
+    new Date(`${isoDate}T12:00:00Z`).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
+
 export default function TimelineView({ dates }: Props) {
     const containerRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
@@ -277,11 +285,7 @@ export default function TimelineView({ dates }: Props) {
                                                 marginTop: CARD_PADDING_Y / 2,
                                             }}
                                         >
-                                            {new Date(date.date).toLocaleDateString('en-US', {
-                                                month: 'short',
-                                                day: 'numeric',
-                                                year: 'numeric',
-                                            })}
+                                            {formatDisplayDate(date.date)}
                                         </div>
                                     </div>
                                 </button>
