@@ -58,12 +58,32 @@ function updateItem(store: ItemStore, index: number, item: MediaEntry) {
 }
 
 function deleteItem(store: ItemStore, mediaId: MediaEntry['media_id']) {
+    // Find the index to delete
+    let deleteIndex = -1;
     for (const [key, item] of store.items) {
         if (item.media_id === mediaId) {
-            store.items.delete(key);
+            deleteIndex = key;
             break;
         }
     }
+
+    if (deleteIndex === -1) return;
+
+    // Create new map with shifted indices
+    const newItems = new Map<number, MediaEntry>();
+    for (const [key, item] of store.items) {
+        if (key < deleteIndex) {
+            // Items before deletion stay at same index
+            newItems.set(key, item);
+        } else if (key > deleteIndex) {
+            // Items after deletion shift down by 1
+            newItems.set(key - 1, item);
+        }
+        // Skip the deleted item (key === deleteIndex)
+    }
+
+    store.items = newItems;
+    store.totalCount--;
     notifySubscribers(store);
 }
 
@@ -74,13 +94,6 @@ function deleteItem(store: ItemStore, mediaId: MediaEntry['media_id']) {
 function useItem(store: ItemStore, index: number): MediaEntry | null {
     // Create a stable snapshot function for this specific index
     const getSnapshot = useCallback(() => getItem(store, index), [store, index]);
-    const subscribe = useCallback((cb: () => void) => subscribeToStore(store, cb), [store]);
-
-    return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-}
-
-function useStoreSize(store: ItemStore): number {
-    const getSnapshot = useCallback(() => store.items.size, [store]);
     const subscribe = useCallback((cb: () => void) => subscribeToStore(store, cb), [store]);
 
     return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
@@ -124,7 +137,7 @@ const MediaItem = memo(function MediaItem({
     if (!item) {
         return (
             <div
-                className="relative rounded-md overflow-hidden bg-slate-800 flex items-center justify-center h-[180px]"
+                className="relative rounded-md overflow-hidden bg-slate-800 flex items-center justify-center w-full h-full"
             >
                 <div className="animate-pulse w-full h-full bg-slate-700/50" />
             </div>
@@ -134,7 +147,7 @@ const MediaItem = memo(function MediaItem({
     return (
         <button
             onClick={() => onSelect(item)}
-            className="relative rounded-md overflow-hidden group cursor-pointer hover:opacity-90 transition-opacity w-full h-[180px]"
+            className="relative rounded-md overflow-hidden group cursor-pointer hover:opacity-90 transition-opacity w-full h-full"
         >
             {item.media_type === 'image' ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -198,26 +211,33 @@ const MediaItem = memo(function MediaItem({
     );
 });
 
-// Row component - renders 4 MediaItems
+// Row component - renders N MediaItems (dynamic columns)
 // Does NOT re-render when items load - only MediaItem does
 const MediaRow = memo(function MediaRow({
                                             rowIndex,
                                             store,
                                             totalCount,
                                             columns,
+                                            itemHeight,
+                                            rowGap,
                                             onSelect,
                                         }: {
     rowIndex: number;
     store: ItemStore;
     totalCount: number;
     columns: number;
+    itemHeight: number;
+    rowGap: number;
     onSelect: (item: MediaEntry) => void;
 }) {
     const startIndex = rowIndex * columns;
 
+    // Dynamic grid column class
+    const gridCols = columns === 2 ? 'grid-cols-2' : columns === 3 ? 'grid-cols-3' : 'grid-cols-4';
+
     return (
-        <div style={{ height: 196, paddingBottom: 16 }}>
-            <div className="grid grid-cols-4 gap-4 h-[180px]">
+        <div style={{ height: itemHeight + rowGap, paddingBottom: rowGap }}>
+            <div className={`grid ${gridCols} gap-4`} style={{ height: itemHeight }}>
                 {Array.from({ length: columns }, (_, colIdx) => {
                     const globalIndex = startIndex + colIdx;
                     if (globalIndex >= totalCount) return <div key={colIdx} />;
@@ -252,19 +272,42 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showJumpPicker, setShowJumpPicker] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [visibleRange, setVisibleRange] = useState({ start: 0, end: 0 });
 
-    const COLUMNS = 4;
-    const BATCH_SIZE = 48;
-    const ROW_HEIGHT = 196; // 180px item + 16px gap
+    // Dynamic layout based on window size
+    const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+    useEffect(() => {
+        const updateDimensions = () => {
+            setDimensions({
+                width: window.innerWidth,
+                height: window.innerHeight,
+            });
+        };
+
+        // Set initial dimensions
+        updateDimensions();
+
+        // Update on resize
+        window.addEventListener('resize', updateDimensions);
+        return () => window.removeEventListener('resize', updateDimensions);
+    }, []);
+
+    // Calculate columns based on width (2-4 columns)
+    const COLUMNS = dimensions.width < 640 ? 2 : dimensions.width < 1024 ? 3 : 4;
+
+    // Calculate row height based on screen height
+    // Use viewport height to determine item height: smaller screens = smaller items
+    const itemHeight = dimensions.height < 600 ? 120 : dimensions.height < 800 ? 150 : 180;
+    const ROW_GAP = 16;
+    const ROW_HEIGHT = itemHeight + ROW_GAP;
+
+    const BATCH_SIZE = COLUMNS * 12; // Always load 12 rows at a time
 
     const loadingRangesRef = useRef<Set<string>>(new Set());
     const initialLoadDoneRef = useRef(false);
 
     const totalRows = Math.ceil(totalCount / COLUMNS);
 
-    // For debug display
-    const storeSize = useStoreSize(store);
     const pendingTranscodes = usePendingTranscodes(store);
 
     // Load items into store (not React state)
@@ -330,6 +373,18 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
         },
         [store, totalCount, loadRange, COLUMNS, BATCH_SIZE]
     );
+
+    // Clear cache when columns change (indices are now invalid)
+    const prevColumnsRef = useRef(COLUMNS);
+    useEffect(() => {
+        if (prevColumnsRef.current !== COLUMNS && prevColumnsRef.current !== 0) {
+            console.log(`[MediaGridVirtual] Columns changed from ${prevColumnsRef.current} to ${COLUMNS}, clearing cache`);
+            store.items.clear();
+            notifySubscribers(store);
+            initialLoadDoneRef.current = false;
+        }
+        prevColumnsRef.current = COLUMNS;
+    }, [COLUMNS, store]);
 
     // Initial load
     useEffect(() => {
@@ -402,10 +457,12 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                 store={store}
                 totalCount={totalCount}
                 columns={COLUMNS}
+                itemHeight={itemHeight}
+                rowGap={ROW_GAP}
                 onSelect={handleSelect}
             />
         ),
-        [store, totalCount, COLUMNS, handleSelect]
+        [store, totalCount, COLUMNS, itemHeight, ROW_GAP, handleSelect]
     );
 
     const handleDeleteClick = () => {
@@ -423,7 +480,8 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
 
             if (result.success) {
                 deleteItem(store, selectedMedia.media_id);
-                setTotalCount((prev) => Math.max(0, prev - 1));
+                // Update total count from store (deleteItem already decremented it)
+                setTotalCount(store.totalCount);
                 setSelectedMedia(null);
                 router.refresh();
             } else {
@@ -452,8 +510,6 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
     // Range change handler - no state updates during scroll
     const handleRangeChanged = useCallback(
         (range: { startIndex: number; endIndex: number }) => {
-            setVisibleRange({ start: range.startIndex, end: range.endIndex });
-
             // Schedule loading outside of scroll handler
             requestAnimationFrame(() => {
                 checkAndLoad(range.startIndex, range.endIndex);
@@ -539,24 +595,10 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                 </button>
             </div>
 
-            {/* Debug panel */}
-            <div className="fixed bottom-6 left-6 z-40 bg-black/70 text-slate-200 text-xs px-3 py-2 rounded-md border border-slate-700">
-                <div>
-                    Cached items: <span className="font-mono">{storeSize}</span> /{' '}
-                    <span className="font-mono">{totalCount}</span>
-                </div>
-                <div>
-                    Total rows: <span className="font-mono">{totalRows}</span>
-                </div>
-                <div>
-                    Visible rows: <span className="font-mono">{visibleRange.start}</span>–
-                    <span className="font-mono">{visibleRange.end}</span>
-                </div>
-            </div>
-
             {/* Virtual Scrolling with FIXED row heights */}
             <div style={{ height: 'calc(100vh - 160px)' }}>
                 <Virtuoso
+                    key={`${COLUMNS}-${ROW_HEIGHT}`}
                     ref={virtuosoRef}
                     style={{ height: '100%' }}
                     totalCount={totalRows}
