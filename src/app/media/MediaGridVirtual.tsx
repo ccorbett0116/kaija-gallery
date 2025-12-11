@@ -611,28 +611,10 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                     className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
                     onClick={() => setSelectedMedia(null)}
                 >
-                    <button
-                        onClick={() => setSelectedMedia(null)}
-                        className="absolute top-4 right-4 text-white hover:text-slate-300 text-4xl leading-none"
-                        aria-label="Close"
-                    >
-                        &times;
-                    </button>
-
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick();
-                        }}
-                        disabled={isPending}
-                        className="absolute top-4 left-4 px-4 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-800 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors"
-                    >
-                        {isPending ? 'Deleting...' : 'Delete'}
-                    </button>
-
+                    {/* DELETE CONFIRM OVERLAY */}
                     {showDeleteConfirm && (
                         <div
-                            className="absolute inset-0 bg-black/50 flex items-center justify-center z-10"
+                            className="absolute inset-0 bg-black/50 flex items-center justify-center z-40"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setShowDeleteConfirm(false);
@@ -649,7 +631,7 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                                     This will permanently delete the original, thumbnail, and all
                                     associated files. This action cannot be undone.
                                 </p>
-                                <div className="flex gap-3 justify-end">
+                                <div className="flex gap-3 justify-beginning">
                                     <button
                                         onClick={() => setShowDeleteConfirm(false)}
                                         className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-md transition-colors"
@@ -667,9 +649,10 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                         </div>
                     )}
 
+                    {/* ERROR OVERLAY */}
                     {error && (
                         <div
-                            className="absolute inset-0 bg-black/50 flex items-center justify-center z-10"
+                            className="absolute inset-0 bg-black/50 flex items-center justify-center z-40"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setError(null);
@@ -693,31 +676,75 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                         </div>
                     )}
 
-                    <div className="max-w-7xl max-h-full" onClick={(e) => e.stopPropagation()}>
-                        {selectedMedia.media_type === 'image' ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                                src={`/api/media/${selectedMedia.file_path_display}`}
-                                alt=""
-                                className="max-w-full max-h-[90vh] object-contain"
-                            />
-                        ) : (
-                            <video
-                                controls
-                                autoPlay
-                                className="max-w-full max-h-[90vh]"
-                                src={`/api/media/${selectedMedia.file_path_display}`}
-                            />
-                        )}
+                    {/* ====== MEDIA WRAPPER (sized to media width) ====== */}
+                    {/* ENTIRE MEDIA PANEL - clicking this closes modal except on protected elements */}
+                    <div
+                        className="flex flex-col items-center max-w-full cursor-pointer"
+                        onClick={() => setSelectedMedia(null)}  // DEFAULT: clicking panel closes
+                    >
+                        {/* --- TOP RIGHT BUTTON ROW --- */}
+                        <div className="w-fit self-end mb-2 flex justify-end px-2 py-1">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();  // don't trigger close
+                                    setSelectedMedia(null);
+                                }}
+                                className="text-white hover:text-slate-300 text-3xl leading-none cursor-pointer"
+                                aria-label="Close"
+                            >
+                                &times;
+                            </button>
+                        </div>
 
-                        {selectedMedia.title && selectedMedia.date && (
-                            <div className="mt-4 text-center text-white">
+                        {/* --- MEDIA CONTENT (clicks SHOULD NOT close) --- */}
+                        <div
+                            className="relative w-fit cursor-default"
+                            onClick={(e) => e.stopPropagation()} // prevents modal close
+                        >
+                            {selectedMedia.media_type === 'image' ? (
+                                <img
+                                    src={`/api/media/${selectedMedia.file_path_display}`}
+                                    alt=""
+                                    className="max-w-full max-h-[80vh] object-contain"
+                                />
+                            ) : (
+                                <video
+                                    controls
+                                    autoPlay
+                                    className="max-w-full max-h-[80vh]"
+                                    src={`/api/media/${selectedMedia.file_path_display}`}
+                                />
+                            )}
+                        </div>
+
+                        {/* --- BOTTOM LEFT BUTTON ROW --- */}
+                        <div className="w-fit self-start mt-2 flex justify-start px-2 py-1">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation(); // prevent modal close
+                                    handleDeleteClick();
+                                }}
+                                disabled={isPending}
+                                className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-800 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors cursor-pointer"
+                            >
+                                {isPending ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+
+                        {/* Title & date (clicks close modal unless on text specifically) */}
+                        <div
+                            className="mt-4 text-center text-white max-w-full"
+                            onClick={(e) => e.stopPropagation()} // optional: prevents close when clicking text
+                        >
+                            {selectedMedia.title && (
                                 <p className="text-lg font-medium">{selectedMedia.title}</p>
+                            )}
+                            {selectedMedia.date && (
                                 <p className="text-sm text-slate-400">
                                     {new Date(selectedMedia.date).toLocaleDateString()}
                                 </p>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
