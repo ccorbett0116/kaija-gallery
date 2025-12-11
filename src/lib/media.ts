@@ -40,76 +40,6 @@ export function ensureMediaDirs() {
     }
 }
 
-// List all media (optionally filter by date)
-export function listMedia(title?: string, date?: string): MediaEntry[] {
-    let query = `
-        SELECT media_id, title, date, file_path_original, file_path_thumb,
-               file_path_display, media_type, sort_order, uploaded_at, transcoding_status
-        FROM media
-    `;
-    const params: any[] = [];
-
-    if (title && date) {
-        query += ' WHERE title = ? AND date = ?';
-        params.push(title, date);
-    } else if (title === null && date === null) {
-        // Only unlinked media
-        query += ' WHERE title IS NULL AND date IS NULL';
-    }
-
-    query += ' ORDER BY uploaded_at DESC';
-
-    const stmt = db.prepare(query);
-    return stmt.all(...params) as MediaEntry[];
-}
-
-// List media with pagination and optional date jump
-export function listMediaPaginated(options: {
-    limit?: number;
-    offset?: number;
-    jumpToDate?: string; // ISO date string - loads media from this date onwards
-}): { media: MediaEntry[]; hasMore: boolean; total: number } {
-    const limit = options.limit || 50;
-    const offset = options.offset || 0;
-
-    let query = `
-        SELECT media_id, title, date, file_path_original, file_path_thumb,
-               file_path_display, media_type, sort_order, uploaded_at, transcoding_status
-        FROM media
-    `;
-    const params: any[] = [];
-
-    if (options.jumpToDate) {
-        // Jump to specific date - find media on or before this date
-        query += ' WHERE uploaded_at <= ?';
-        params.push(options.jumpToDate);
-    }
-
-    query += ' ORDER BY uploaded_at DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
-
-    const stmt = db.prepare(query);
-    const media = stmt.all(...params) as MediaEntry[];
-
-    // Get total count for hasMore calculation
-    let countQuery = 'SELECT COUNT(*) as count FROM media';
-    const countParams: any[] = [];
-
-    if (options.jumpToDate) {
-        countQuery += ' WHERE uploaded_at <= ?';
-        countParams.push(options.jumpToDate);
-    }
-
-    const countStmt = db.prepare(countQuery);
-    const { count } = countStmt.get(...countParams) as { count: number };
-
-    return {
-        media,
-        hasMore: offset + media.length < count,
-        total: count,
-    };
-}
-
 // List media for bi-directional infinite scroll
 export function listMediaBidirectional(options: {
     limit?: number;
@@ -502,28 +432,6 @@ export function updateVideoAfterTranscoding(
     `);
 
     stmt.run(displayPath, thumbPath, mediaId);
-}
-
-// Link media to a date
-export function linkMediaToDate(mediaId: number, title: string, date: string) {
-    const stmt = db.prepare(`
-        UPDATE media
-        SET title = ?, date = ?
-        WHERE media_id = ?
-    `);
-
-    stmt.run(title, date, mediaId);
-}
-
-// Unlink media from date
-export function unlinkMediaFromDate(mediaId: number) {
-    const stmt = db.prepare(`
-        UPDATE media
-        SET title = NULL, date = NULL
-        WHERE media_id = ?
-    `);
-
-    stmt.run(mediaId);
 }
 
 // Delete media entry and all associated files
