@@ -9,8 +9,8 @@ export default function NewIdeaPage() {
             <div className="max-w-2xl mx-auto py-8 px-4">
                 <div className="flex justify-between items-center mb-4">
                     <h1 className="text-2xl font-semibold">Add an Idea</h1>
-                    <Link href="/ideas" className="text-slate-400 hover:text-sky-400 text-3xl font-light leading-none">
-                        &times;
+                    <Link href="/ideas" className="text-sm text-slate-400 hover:text-sky-400">
+                        Back to Ideas
                     </Link>
                 </div>
                 <NewIdeaForm action={createIdeaAction} />
