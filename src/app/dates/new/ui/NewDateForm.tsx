@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { FieldType, FieldDefinition } from '@/lib/dates';
 import MediaSelector from './MediaSelector';
+import ManageFieldsModal from './ManageFieldsModal';
 
 type GooglePlacesSuggestion = {
     placePrediction?: {
@@ -242,6 +243,7 @@ export default function NewDateForm({
     const [activeSuggestions, setActiveSuggestions] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [selectedMediaIds, setSelectedMediaIds] = useState<number[]>(initialMediaIds);
+    const [showManageFields, setShowManageFields] = useState(false);
 
     useEffect(() => {
         // Auto-resize any textareas on initial render and whenever fields change
@@ -442,13 +444,22 @@ export default function NewDateForm({
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Custom Fields</span>
-                    <button
-                        type="button"
-                        onClick={addField}
-                        className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:border-sky-500"
-                    >
-                        + Add Field
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setShowManageFields(true)}
+                            className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:border-sky-500"
+                        >
+                            Manage Fields
+                        </button>
+                        <button
+                            type="button"
+                            onClick={addField}
+                            className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:border-sky-500"
+                        >
+                            + Add Field
+                        </button>
+                    </div>
                 </div>
 
                 <div className="space-y-3">
@@ -601,6 +612,11 @@ export default function NewDateForm({
             >
                 {submitLabel}
             </button>
+
+            {/* Manage Fields Modal */}
+            {showManageFields && (
+                <ManageFieldsModal onClose={() => setShowManageFields(false)} />
+            )}
         </form>
     );
 }

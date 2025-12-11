@@ -69,13 +69,12 @@ export function getDateEntry(title: string, date: string): DateEntryWithFields |
     const fieldsStmt = db.prepare(`
     SELECT
       dfv.field_id,
-      f.field_name,
-      f.field_type,
+      dfv.field_name,
+      dfv.field_type,
       dfv.value
     FROM date_field_values dfv
-    JOIN fields f ON f.field_id = dfv.field_id
     WHERE dfv.title = ? AND dfv.date = ?
-    ORDER BY f.field_name ASC
+    ORDER BY dfv.field_name ASC
   `);
 
     const fields = fieldsStmt.all(title, date) as DateFieldValue[];
@@ -119,6 +118,53 @@ export function searchFields(query: string): FieldDefinition[] {
     return stmt.all(`%${query}%`) as FieldDefinition[];
 }
 
+// Get all fields with usage count
+export type FieldWithUsage = FieldDefinition & {
+    usage_count: number;
+};
+
+export function getAllFields(query?: string): FieldWithUsage[] {
+    const sql = query
+        ? `
+        SELECT
+            f.field_id,
+            f.field_name,
+            f.field_type,
+            COUNT(DISTINCT dfv.title || ':' || dfv.date) as usage_count
+        FROM fields f
+        LEFT JOIN date_field_values dfv ON f.field_id = dfv.field_id
+        WHERE f.field_name LIKE ?
+        GROUP BY f.field_id
+        ORDER BY f.field_name ASC
+        `
+        : `
+        SELECT
+            f.field_id,
+            f.field_name,
+            f.field_type,
+            COUNT(DISTINCT dfv.title || ':' || dfv.date) as usage_count
+        FROM fields f
+        LEFT JOIN date_field_values dfv ON f.field_id = dfv.field_id
+        GROUP BY f.field_id
+        ORDER BY f.field_name ASC
+        `;
+
+    const stmt = db.prepare(sql);
+    const result = query ? stmt.all(`%${query}%`) : stmt.all();
+    return result as FieldWithUsage[];
+}
+
+// Delete a field definition (removes from autocomplete but keeps date data)
+export function deleteField(fieldId: number): { success: boolean; error?: string } {
+    // Delete the field definition - date_field_values will retain field_name and field_type
+    const deleteStmt = db.prepare(`
+        DELETE FROM fields WHERE field_id = ?
+    `);
+    deleteStmt.run(fieldId);
+
+    return { success: true };
+}
+
 // Insert a date + custom fields, creating missing field names in registry
 export type NewFieldInput = { name: string; value: string; type: FieldType };
 
@@ -148,8 +194,8 @@ export function createDateEntry(
   `);
 
     const insertValue = db.prepare(`
-    INSERT INTO date_field_values (title, date, field_id, value)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO date_field_values (title, date, field_id, field_name, field_type, value)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
 
     const insertDateMedia = db.prepare(`
@@ -181,7 +227,7 @@ export function createDateEntry(
                 }
             }
 
-            insertValue.run(title, date, fieldId, value);
+            insertValue.run(title, date, fieldId, name, type, value);
         }
 
         // Associate media with this date (preserving order)
@@ -242,8 +288,8 @@ export function updateDateEntry(
   `);
 
     const insertValue = db.prepare(`
-    INSERT INTO date_field_values (title, date, field_id, value)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO date_field_values (title, date, field_id, field_name, field_type, value)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
 
     const insertDateMedia = db.prepare(`
@@ -279,7 +325,7 @@ export function updateDateEntry(
                 }
             }
 
-            insertValue.run(newTitle, newDate, fieldId, value);
+            insertValue.run(newTitle, newDate, fieldId, name, type, value);
         }
 
         // Re-insert media associations
