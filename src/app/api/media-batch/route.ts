@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
     const stmt = db.prepare(`
         SELECT media_id, title, date, file_path_original, file_path_thumb,
-               file_path_display, media_type, sort_order, uploaded_at, transcoding_status
+               file_path_display, media_type, sort_order, rotation, uploaded_at, transcoding_status
         FROM media
         WHERE transcoding_status = 'completed'
         ORDER BY uploaded_at DESC

@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
         const filename = formData.get('filename') as string;
         const uploadId = formData.get('uploadId') as string; // Unique ID for this upload session
         const mediaType = formData.get('mediaType') as string; // 'image' or 'video'
+        const lastModified = formData.get('lastModified') as string | null; // optional client lastModified
 
         if (!chunk || isNaN(chunkIndex) || isNaN(totalChunks) || !filename || !uploadId || !mediaType) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
 
         if (receivedChunks === totalChunks) {
             // All chunks received, assemble the file
-            await assembleFile(uploadId, filename, totalChunks, mediaType as 'image' | 'video');
+            await assembleFile(uploadId, filename, totalChunks, mediaType as 'image' | 'video', lastModified);
 
             return NextResponse.json({
                 success: true,
@@ -111,7 +112,13 @@ export async function POST(request: NextRequest) {
     }
 }
 
-async function assembleFile(uploadId: string, filename: string, totalChunks: number, mediaType: 'image' | 'video') {
+async function assembleFile(
+    uploadId: string,
+    filename: string,
+    totalChunks: number,
+    mediaType: 'image' | 'video',
+    lastModified: string | null
+) {
     const CHUNK_DIR = getChunkDir();
     const uploadChunkDir = path.join(CHUNK_DIR, uploadId);
 
@@ -135,7 +142,8 @@ async function assembleFile(uploadId: string, filename: string, totalChunks: num
     }
 
     // Write assembled file
-    await writeFile(finalPath, Buffer.concat(chunks));
+    const finalBuffer = Buffer.concat(chunks);
+    await writeFile(finalPath, finalBuffer);
 
     // Clean up chunks
     for (let i = 0; i < totalChunks; i++) {
@@ -144,9 +152,15 @@ async function assembleFile(uploadId: string, filename: string, totalChunks: num
     }
     await rmdir(uploadChunkDir).catch(() => {}); // Remove directory
 
+    const clientLastModified =
+        lastModified && !Number.isNaN(Number(lastModified))
+            ? new Date(Number(lastModified)).toISOString()
+            : null;
+
     if (mediaType === 'image') {
         // Process image: generate thumbnail and display version
-        const { processImageFromPath } = await import('@/lib/media');
+        const { processImageFromPath, extractImageCaptureDate } = await import('@/lib/media');
+        const captureDate = (await extractImageCaptureDate(finalBuffer, filename)) || clientLastModified;
 
         const processed = await processImageFromPath(finalPath, uniqueFilename);
 
@@ -160,7 +174,7 @@ async function assembleFile(uploadId: string, filename: string, totalChunks: num
 
         stmt.run(
             null, // title
-            null, // date
+            captureDate || null, // date (capture date if available)
             processed.originalPath,
             processed.thumbPath,
             processed.displayPath,
@@ -172,6 +186,9 @@ async function assembleFile(uploadId: string, filename: string, totalChunks: num
 
     } else {
         // Video: Insert into database with pending transcoding status
+        const { extractVideoCaptureDate } = await import('@/lib/media');
+        const captureDate = (await extractVideoCaptureDate(finalPath, filename)) || clientLastModified;
+
         const stmt = db.prepare(`
             INSERT INTO media (
                 title, date, file_path_original, file_path_thumb, file_path_display,
@@ -181,7 +198,7 @@ async function assembleFile(uploadId: string, filename: string, totalChunks: num
 
         const result = stmt.run(
             null, // title
-            null, // date
+            captureDate || null, // date (capture date if available)
             relativePath,
             null, // thumb - will be generated during transcoding
             null, // display - will be generated during transcoding

@@ -272,7 +272,7 @@ export default function TimelineView({ dates }: Props) {
                                         {/* Media Thumbnail */}
                                         {date.first_media_thumb && (
                                             <div
-                                                className="mb-2 rounded overflow-hidden bg-slate-200 dark:bg-slate-800 relative"
+                                                className="mb-2 rounded overflow-hidden bg-slate-200 dark:bg-slate-800 relative flex items-center justify-center"
                                                 style={{
                                                     width: Math.max(80, 120 * SCALE),
                                                     height: Math.max(60, 90 * SCALE),
@@ -281,7 +281,11 @@ export default function TimelineView({ dates }: Props) {
                                                 <img
                                                     src={`/api/media/${date.first_media_thumb}`}
                                                     alt=""
-                                                    className="w-full h-full object-cover"
+                                                    className="max-w-full max-h-full object-contain"
+                                                    style={{
+                                                        transform: `rotate(${date.first_media_rotation ?? 0}deg)`,
+                                                        transformOrigin: 'center center',
+                                                    }}
                                                 />
                                                 {date.first_media_type === 'video' && (
                                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

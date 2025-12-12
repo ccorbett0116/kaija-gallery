@@ -57,6 +57,15 @@ function updateItem(store: ItemStore, index: number, item: MediaEntry) {
     notifySubscribers(store);
 }
 
+function updateRotation(store: ItemStore, mediaId: number, rotation: number) {
+    store.items.forEach((item, key) => {
+        if (item.media_id === mediaId) {
+            store.items.set(key, { ...item, rotation });
+        }
+    });
+    notifySubscribers(store);
+}
+
 function deleteItem(store: ItemStore, mediaId: MediaEntry['media_id']) {
     // Find the index to delete
     let deleteIndex = -1;
@@ -157,6 +166,10 @@ const MediaItem = memo(function MediaItem({
                     className="w-full h-full object-contain"
                     loading="lazy"
                     decoding="async"
+                    style={{
+                        transform: `rotate(${item.rotation ?? 0}deg)`,
+                        transformOrigin: 'center center',
+                    }}
                 />
             ) : (
                 <div className="relative w-full h-full">
@@ -168,6 +181,10 @@ const MediaItem = memo(function MediaItem({
                             className="w-full h-full object-contain"
                             loading="lazy"
                             decoding="async"
+                            style={{
+                                transform: `rotate(${item.rotation ?? 0}deg)`,
+                                transformOrigin: 'center center',
+                            }}
                         />
                     ) : (
                         <div className="w-full h-full bg-slate-800 flex items-center justify-center">
@@ -272,6 +289,30 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showJumpPicker, setShowJumpPicker] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+    const rotateImage = useCallback(
+        (direction: 'cw' | 'ccw') => {
+            if (!selectedMedia) return;
+            const delta = direction === 'cw' ? 90 : -90;
+            startTransition(async () => {
+                try {
+                    const res = await fetch('/api/media/rotate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ mediaId: selectedMedia.media_id, delta }),
+                    });
+                    if (!res.ok) throw new Error('Rotate failed');
+                    const data = (await res.json()) as { rotation: number };
+                    setSelectedMedia((prev) => (prev ? { ...prev, rotation: data.rotation } : prev));
+                    updateRotation(store, selectedMedia.media_id, data.rotation);
+                } catch (err) {
+                    console.error(err);
+                    setError('Failed to rotate media');
+                }
+            });
+        },
+        [selectedMedia, startTransition, store]
+    );
 
     // Dynamic layout based on window size
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -442,7 +483,67 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
     // Stable select handler
     const handleSelect = useCallback((item: MediaEntry) => {
         setSelectedMedia(item);
+        setImageDimensions(null); // Reset dimensions when selecting new media
     }, []);
+
+    // Calculate proper dimensions for rotated images
+    const getDisplayDimensions = useCallback(() => {
+        if (!selectedMedia || !imageDimensions) return {
+            container: { maxWidth: '90vw', maxHeight: '75vh' },
+            image: { width: '100%', height: '100%' }
+        };
+
+        const rotation = (selectedMedia.rotation ?? 0) % 360;
+        const isRotated = rotation === 90 || rotation === 270 || rotation === -90 || rotation === -270;
+
+        // Available space
+        const maxWidth = window.innerWidth * 0.9;
+        const maxHeight = window.innerHeight * 0.75;
+
+        const { width, height } = imageDimensions;
+
+        // Calculate what size the rotated bounds will be
+        let rotatedWidth, rotatedHeight;
+        if (isRotated) {
+            // After rotation, the bounding box dimensions swap
+            rotatedWidth = height;
+            rotatedHeight = width;
+        } else {
+            rotatedWidth = width;
+            rotatedHeight = height;
+        }
+
+        // Calculate scale to fit the ROTATED bounds into available space
+        const scaleX = maxWidth / rotatedWidth;
+        const scaleY = maxHeight / rotatedHeight;
+        const scale = Math.min(scaleX, scaleY, 1); // Don't scale up
+
+        // Container size needs to accommodate the rotated image
+        const containerWidth = rotatedWidth * scale;
+        const containerHeight = rotatedHeight * scale;
+
+        // Image dimensions need to be swapped when rotated
+        let imageWidth, imageHeight;
+        if (isRotated) {
+            // Image needs opposite dimensions to fill container after rotation
+            imageWidth = containerHeight;
+            imageHeight = containerWidth;
+        } else {
+            imageWidth = containerWidth;
+            imageHeight = containerHeight;
+        }
+
+        return {
+            container: {
+                width: `${containerWidth}px`,
+                height: `${containerHeight}px`,
+            },
+            image: {
+                maxWidth: `${imageWidth}px`,
+                maxHeight: `${imageHeight}px`,
+            }
+        };
+    }, [selectedMedia, imageDimensions]);
 
     // Row renderer - store reference is stable, no re-renders from data loading
     const rowContent = useCallback(
@@ -676,52 +777,98 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                         </div>
                     )}
 
-                    {/* ====== MEDIA WRAPPER (sized to media width) ====== */}
-                    {/* ENTIRE MEDIA PANEL - clicking this closes modal except on protected elements */}
+                    {/* Content wrapper - prevents backdrop click */}
                     <div
-                        className="flex flex-col items-center max-w-full cursor-pointer"
-                        onClick={() => setSelectedMedia(null)}  // DEFAULT: clicking panel closes
+                        className="relative flex flex-col items-center gap-4 max-w-full max-h-full"
                     >
-                        {/* --- TOP RIGHT BUTTON ROW --- */}
-                        <div className="w-fit self-end mb-2 flex justify-end px-2 py-1">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();  // don't trigger close
-                                    setSelectedMedia(null);
-                                }}
-                                className="text-white hover:text-slate-300 text-3xl leading-none cursor-pointer"
-                                aria-label="Close"
-                            >
-                                &times;
-                            </button>
-                        </div>
+                        {/* Close button - positioned relative to content wrapper */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedMedia(null);
+                            }}
+                            className="self-end text-white hover:text-slate-300 text-3xl leading-none cursor-pointer bg-black/50 rounded-full w-10 h-10 flex items-center justify-center"
+                            aria-label="Close"
+                        >
+                            &times;
+                        </button>
 
-                        {/* --- MEDIA CONTENT (clicks SHOULD NOT close) --- */}
+                        {/* Media container with proper size constraints */}
                         <div
-                            className="relative w-fit cursor-default"
-                            onClick={(e) => e.stopPropagation()} // prevents modal close
+                            className="flex items-center justify-center"
+                            style={getDisplayDimensions().container}
                         >
                             {selectedMedia.media_type === 'image' ? (
                                 <img
                                     src={`/api/media/${selectedMedia.file_path_display}`}
                                     alt=""
-                                    className="max-w-full max-h-[80vh] object-contain"
+                                    className="block"
+                                    onLoad={(e) => {
+                                        const img = e.currentTarget;
+                                        setImageDimensions({
+                                            width: img.naturalWidth,
+                                            height: img.naturalHeight,
+                                        });
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                        ...getDisplayDimensions().image,
+                                        objectFit: 'contain',
+                                        transform: `rotate(${selectedMedia.rotation ?? 0}deg)`,
+                                        transformOrigin: 'center center',
+                                    }}
                                 />
                             ) : (
                                 <video
                                     controls
                                     autoPlay
-                                    className="max-w-full max-h-[80vh]"
+                                    className="block"
                                     src={`/api/media/${selectedMedia.file_path_display}`}
+                                    onLoadedMetadata={(e) => {
+                                        const video = e.currentTarget;
+                                        setImageDimensions({
+                                            width: video.videoWidth,
+                                            height: video.videoHeight,
+                                        });
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                        ...getDisplayDimensions().image,
+                                        objectFit: 'contain',
+                                        transform: `rotate(${selectedMedia.rotation ?? 0}deg)`,
+                                        transformOrigin: 'center center',
+                                    }}
                                 />
                             )}
                         </div>
 
-                        {/* --- BOTTOM LEFT BUTTON ROW --- */}
-                        <div className="w-fit self-start mt-2 flex justify-start px-2 py-1">
+                        {/* Control buttons */}
+                        <div className="flex gap-2">
                             <button
                                 onClick={(e) => {
-                                    e.stopPropagation(); // prevent modal close
+                                    e.stopPropagation();
+                                    rotateImage('ccw');
+                                }}
+                                disabled={isPending}
+                                className="p-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-md transition-colors cursor-pointer disabled:opacity-50"
+                                title="Rotate counter-clockwise"
+                            >
+                                ↶
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    rotateImage('cw');
+                                }}
+                                disabled={isPending}
+                                className="p-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-md transition-colors cursor-pointer disabled:opacity-50"
+                                title="Rotate clockwise"
+                            >
+                                ↷
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     handleDeleteClick();
                                 }}
                                 disabled={isPending}
@@ -731,20 +878,21 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                             </button>
                         </div>
 
-                        {/* Title & date (clicks close modal unless on text specifically) */}
-                        <div
-                            className="mt-4 text-center text-white max-w-full"
-                            onClick={(e) => e.stopPropagation()} // optional: prevents close when clicking text
-                        >
-                            {selectedMedia.title && (
-                                <p className="text-lg font-medium">{selectedMedia.title}</p>
-                            )}
-                            {selectedMedia.date && (
-                                <p className="text-sm text-slate-400">
-                                    {new Date(selectedMedia.date).toLocaleDateString()}
-                                </p>
-                            )}
-                        </div>
+                        {/* Media info */}
+                        {(selectedMedia.title || selectedMedia.date || selectedMedia.uploaded_at) && (
+                            <div className="text-center text-white space-y-1">
+                                {selectedMedia.title && (
+                                    <p className="text-lg font-medium">{selectedMedia.title}</p>
+                                )}
+                                {(selectedMedia.date || selectedMedia.uploaded_at) && (
+                                    <p className="text-sm text-slate-200">
+                                        {selectedMedia.date
+                                            ? new Date(selectedMedia.date).toLocaleString()
+                                            : new Date(selectedMedia.uploaded_at).toLocaleString()}
+                                    </p>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS media (
   file_path_display   TEXT,
   media_type          TEXT NOT NULL,     -- 'image' | 'video'
   sort_order          INTEGER NOT NULL DEFAULT 0,
+  rotation            INTEGER NOT NULL DEFAULT 0, -- degrees clockwise (0,90,180,270)
   uploaded_at         TEXT NOT NULL,     -- track when media was uploaded
   transcoding_status  TEXT NOT NULL DEFAULT 'completed', -- 'pending' | 'processing' | 'completed' | 'failed'
   FOREIGN KEY (title, date)
@@ -90,5 +91,12 @@ CREATE TABLE IF NOT EXISTS date_media (
     ON DELETE CASCADE
 );
 `);
+
+// Ensure rotation column exists on existing databases
+const mediaColumns = db.prepare(`PRAGMA table_info(media)`).all() as { name: string }[];
+const hasRotation = mediaColumns.some((c) => c.name === 'rotation');
+if (!hasRotation) {
+    db.exec(`ALTER TABLE media ADD COLUMN rotation INTEGER NOT NULL DEFAULT 0`);
+}
 
 export default db;

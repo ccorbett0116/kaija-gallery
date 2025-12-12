@@ -1,7 +1,6 @@
 // src/app/media/upload/actions.ts
 'use server';
 
-import { redirect } from 'next/navigation';
 import { processImage, processVideo, createMediaEntry } from '@/lib/media';
 
 type UploadResult =
@@ -45,7 +44,9 @@ export async function uploadMediaAction(formData: FormData): Promise<UploadResul
                     result.original,
                     result.display,
                     result.thumbnail,
-                    'image'
+                    'image',
+                    undefined,
+                    result.captureDate || undefined
                 );
             } else {
                 result = await processVideo(file, file.name);
@@ -53,7 +54,9 @@ export async function uploadMediaAction(formData: FormData): Promise<UploadResul
                     result.original,
                     result.display,
                     result.thumbnail,
-                    'video'
+                    'video',
+                    undefined,
+                    result.captureDate || undefined
                 );
             }
         }
@@ -65,6 +68,5 @@ export async function uploadMediaAction(formData: FormData): Promise<UploadResul
         };
     }
 
-    // redirect() throws NEXT_REDIRECT - don't catch it, let Next.js handle it
-    redirect('/media');
+    return { success: true };
 }

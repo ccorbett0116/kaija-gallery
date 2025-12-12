@@ -9,6 +9,7 @@ export type DateEntry = {
     updated_at: string;
     first_media_thumb?: string | null;
     first_media_type?: 'image' | 'video' | null;
+    first_media_rotation?: number | null;
 };
 
 export type FieldType = 'text' | 'time' | 'date' | 'datetime-local' | 'number' | 'address';
@@ -35,7 +36,8 @@ export function listDates(limit = 50): DateEntry[] {
       de.created_at,
       de.updated_at,
       m.file_path_thumb as first_media_thumb,
-      m.media_type as first_media_type
+      m.media_type as first_media_type,
+      m.rotation as first_media_rotation
     FROM date_entries de
     LEFT JOIN (
       SELECT dm.title, dm.date, dm.media_id
@@ -89,6 +91,7 @@ export function getDateEntry(title: string, date: string): DateEntryWithFields |
       m.file_path_display,
       m.media_type,
       m.sort_order,
+      m.rotation,
       m.uploaded_at,
       m.transcoding_status
     FROM date_media dm

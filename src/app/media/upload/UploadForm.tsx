@@ -92,6 +92,9 @@ async function uploadMediaInChunks(
                 formData.append('filename', file.name);
                 formData.append('uploadId', uploadId);
                 formData.append('mediaType', mediaType);
+                if (typeof file.lastModified === 'number') {
+                    formData.append('lastModified', file.lastModified.toString());
+                }
 
                 const response = await fetch('/api/upload-chunk', {
                     method: 'POST',

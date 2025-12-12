@@ -136,6 +136,10 @@ const MediaItem = memo(function MediaItem({
                     className="w-full h-full object-cover"
                     loading="lazy"
                     decoding="async"
+                    style={{
+                        transform: `rotate(${item.rotation ?? 0}deg)`,
+                        transformOrigin: 'center center',
+                    }}
                 />
             ) : (
                 <div className="relative w-full h-full">
@@ -147,6 +151,10 @@ const MediaItem = memo(function MediaItem({
                             className="w-full h-full object-cover"
                             loading="lazy"
                             decoding="async"
+                            style={{
+                                transform: `rotate(${item.rotation ?? 0}deg)`,
+                                transformOrigin: 'center center',
+                            }}
                         />
                     ) : (
                         <div className="w-full h-full bg-slate-800 flex items-center justify-center">
@@ -246,6 +254,7 @@ export default function MediaGridSelection({ initialTotal, selectedIds, onToggle
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
     const [renderedCount, setRenderedCount] = useState(0);
     const [previewMedia, setPreviewMedia] = useState<MediaEntry | null>(null);
+    const [mediaDimensions, setMediaDimensions] = useState<{ width: number; height: number } | null>(null);
 
     // Track DOM img count
     useEffect(() => {
@@ -263,7 +272,60 @@ export default function MediaGridSelection({ initialTotal, selectedIds, onToggle
 
     const handleLongPress = useCallback((item: MediaEntry) => {
         setPreviewMedia(item);
+        setMediaDimensions(null);
     }, []);
+
+    // Calculate proper dimensions for rotated media
+    const getDisplayDimensions = useCallback(() => {
+        if (!previewMedia || !mediaDimensions) return {
+            container: { maxWidth: '95vw', maxHeight: '85vh' },
+            media: {}
+        };
+
+        const rotation = (previewMedia.rotation ?? 0) % 360;
+        const isRotated = rotation === 90 || rotation === 270 || rotation === -90 || rotation === -270;
+
+        const maxWidth = window.innerWidth * 0.95;
+        const maxHeight = window.innerHeight * 0.85;
+
+        const { width, height } = mediaDimensions;
+
+        let rotatedWidth, rotatedHeight;
+        if (isRotated) {
+            rotatedWidth = height;
+            rotatedHeight = width;
+        } else {
+            rotatedWidth = width;
+            rotatedHeight = height;
+        }
+
+        const scaleX = maxWidth / rotatedWidth;
+        const scaleY = maxHeight / rotatedHeight;
+        const scale = Math.min(scaleX, scaleY, 1);
+
+        const containerWidth = rotatedWidth * scale;
+        const containerHeight = rotatedHeight * scale;
+
+        let mediaWidth, mediaHeight;
+        if (isRotated) {
+            mediaWidth = containerHeight;
+            mediaHeight = containerWidth;
+        } else {
+            mediaWidth = containerWidth;
+            mediaHeight = containerHeight;
+        }
+
+        return {
+            container: {
+                width: `${containerWidth}px`,
+                height: `${containerHeight}px`,
+            },
+            media: {
+                maxWidth: `${mediaWidth}px`,
+                maxHeight: `${mediaHeight}px`,
+            }
+        };
+    }, [previewMedia, mediaDimensions]);
 
     useEffect(() => {
         const updateDimensions = () => {
@@ -402,21 +464,42 @@ export default function MediaGridSelection({ initialTotal, selectedIds, onToggle
                     className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
                     onClick={() => setPreviewMedia(null)}
                 >
-                    <button
-                        onClick={() => setPreviewMedia(null)}
-                        className="absolute top-4 right-4 text-white hover:text-slate-300 text-4xl leading-none"
-                        aria-label="Close"
+                    <div
+                        className="relative flex flex-col items-center gap-4 max-w-full max-h-full"
+                        onClick={(e) => e.stopPropagation()}
                     >
-                        &times;
-                    </button>
+                        <button
+                            onClick={() => setPreviewMedia(null)}
+                            className="self-end text-white hover:text-slate-300 text-3xl leading-none cursor-pointer bg-black/50 rounded-full w-10 h-10 flex items-center justify-center"
+                            aria-label="Close"
+                        >
+                            &times;
+                        </button>
 
-                    <div className="max-w-7xl max-h-full" onClick={(e) => e.stopPropagation()}>
-                        <video
-                            controls
-                            autoPlay
-                            className="max-w-full max-h-[90vh]"
-                            src={`/api/media/${previewMedia.file_path_display}`}
-                        />
+                        <div
+                            className="flex items-center justify-center"
+                            style={getDisplayDimensions().container}
+                        >
+                            <video
+                                controls
+                                autoPlay
+                                className="block"
+                                src={`/api/media/${previewMedia.file_path_display}`}
+                                onLoadedMetadata={(e) => {
+                                    const video = e.currentTarget;
+                                    setMediaDimensions({
+                                        width: video.videoWidth,
+                                        height: video.videoHeight,
+                                    });
+                                }}
+                                style={{
+                                    ...getDisplayDimensions().media,
+                                    objectFit: 'contain',
+                                    transform: `rotate(${previewMedia.rotation ?? 0}deg)`,
+                                    transformOrigin: 'center center',
+                                }}
+                            />
+                        </div>
                     </div>
                 </div>
             )}

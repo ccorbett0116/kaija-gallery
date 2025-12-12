@@ -18,6 +18,7 @@ export type MediaEntry = {
     file_path_display: string | null;
     media_type: 'image' | 'video';
     sort_order: number;
+    rotation: number;
     uploaded_at: string;
     transcoding_status: 'pending' | 'processing' | 'completed' | 'failed';
 };
@@ -41,27 +42,29 @@ export function ensureMediaDirs() {
 }
 
 // List media for bi-directional infinite scroll
+const ORDER_KEY = 'COALESCE(date, uploaded_at)';
+
 export function listMediaBidirectional(options: {
     limit?: number;
-    olderThan?: string; // Load items older than this timestamp
-    newerThan?: string; // Load items newer than this timestamp
-    jumpToDate?: string; // Jump to specific date
+    olderThan?: string; // Load items older than this timestamp (capture-or-upload)
+    newerThan?: string; // Load items newer than this timestamp (capture-or-upload)
+    jumpToDate?: string; // Jump to specific date (capture-or-upload)
     jumpToBottom?: boolean; // Jump to oldest items
 }): { media: MediaEntry[]; hasMoreOlder: boolean; hasMoreNewer: boolean } {
     const limit = options.limit || 50;
 
     let query = `
         SELECT media_id, title, date, file_path_original, file_path_thumb,
-               file_path_display, media_type, sort_order, uploaded_at, transcoding_status
+               file_path_display, media_type, sort_order, rotation, uploaded_at, transcoding_status
         FROM media
     `;
     const params: any[] = [];
 
     if (options.newerThan) {
         // Loading newer items (scrolling up) - get items after this timestamp
-        query += ' WHERE uploaded_at > ?';
+        query += ` WHERE ${ORDER_KEY} > ?`;
         params.push(options.newerThan);
-        query += ' ORDER BY uploaded_at ASC LIMIT ?'; // ASC to get closest items first
+        query += ` ORDER BY ${ORDER_KEY} ASC, uploaded_at ASC LIMIT ?`; // ASC to get closest items first, tie-break by upload
         params.push(limit);
 
         const stmt = db.prepare(query);
@@ -71,7 +74,7 @@ export function listMediaBidirectional(options: {
         media.reverse();
 
         // Check if there are more newer items
-        const newestStmt = db.prepare('SELECT MAX(uploaded_at) as max FROM media');
+        const newestStmt = db.prepare(`SELECT MAX(${ORDER_KEY}) as max FROM media`);
         const { max: newestTimestamp } = newestStmt.get() as { max: string };
         const hasMoreNewer = media.length > 0 && media[0].uploaded_at < newestTimestamp;
 
@@ -82,9 +85,9 @@ export function listMediaBidirectional(options: {
         return { media, hasMoreNewer, hasMoreOlder };
     } else if (options.olderThan) {
         // Loading older items (scrolling down) - get items before this timestamp
-        query += ' WHERE uploaded_at < ?';
+        query += ` WHERE ${ORDER_KEY} < ?`;
         params.push(options.olderThan);
-        query += ' ORDER BY uploaded_at DESC LIMIT ?';
+        query += ` ORDER BY ${ORDER_KEY} DESC, uploaded_at DESC LIMIT ?`;
         params.push(limit);
 
         const stmt = db.prepare(query);
@@ -101,7 +104,7 @@ export function listMediaBidirectional(options: {
         return { media, hasMoreNewer, hasMoreOlder };
     } else if (options.jumpToBottom) {
         // Jump to bottom - get oldest items
-        query += ' ORDER BY uploaded_at ASC LIMIT ?'; // ASC to get oldest first
+        query += ` ORDER BY ${ORDER_KEY} ASC, uploaded_at ASC LIMIT ?`; // ASC to get oldest first
         params.push(limit);
 
         const stmt = db.prepare(query);
@@ -118,9 +121,9 @@ export function listMediaBidirectional(options: {
         return { media, hasMoreNewer, hasMoreOlder };
     } else if (options.jumpToDate) {
         // Jump to specific date
-        query += ' WHERE uploaded_at <= ?';
+        query += ` WHERE ${ORDER_KEY} <= ?`;
         params.push(options.jumpToDate);
-        query += ' ORDER BY uploaded_at DESC LIMIT ?';
+        query += ` ORDER BY ${ORDER_KEY} DESC, uploaded_at DESC LIMIT ?`;
         params.push(limit);
 
         const stmt = db.prepare(query);
@@ -135,7 +138,7 @@ export function listMediaBidirectional(options: {
         return { media, hasMoreNewer, hasMoreOlder };
     } else {
         // Initial load - get most recent items
-        query += ' ORDER BY uploaded_at DESC LIMIT ?';
+        query += ` ORDER BY ${ORDER_KEY} DESC, uploaded_at DESC LIMIT ?`;
         params.push(limit);
 
         const stmt = db.prepare(query);
@@ -151,14 +154,14 @@ export function listMediaBidirectional(options: {
 
 // Helper: Check if there are older items than given timestamp
 function checkHasOlderItems(timestamp: string): boolean {
-    const stmt = db.prepare('SELECT COUNT(*) as count FROM media WHERE uploaded_at < ?');
+    const stmt = db.prepare(`SELECT COUNT(*) as count FROM media WHERE ${ORDER_KEY} < ?`);
     const { count } = stmt.get(timestamp) as { count: number };
     return count > 0;
 }
 
 // Helper: Check if there are newer items than given timestamp
 function checkHasNewerItems(timestamp: string): boolean {
-    const stmt = db.prepare('SELECT COUNT(*) as count FROM media WHERE uploaded_at > ?');
+    const stmt = db.prepare(`SELECT COUNT(*) as count FROM media WHERE ${ORDER_KEY} > ?`);
     const { count } = stmt.get(timestamp) as { count: number };
     return count > 0;
 }
@@ -174,9 +177,9 @@ export function getTotalMediaCount(): number {
 export function getMediaByRange(offset: number, limit: number): MediaEntry[] {
     const stmt = db.prepare(`
         SELECT media_id, title, date, file_path_original, file_path_thumb,
-               file_path_display, media_type, sort_order, uploaded_at, transcoding_status
+               file_path_display, media_type, sort_order, rotation, uploaded_at, transcoding_status
         FROM media
-        ORDER BY uploaded_at DESC
+        ORDER BY ${ORDER_KEY} DESC, uploaded_at DESC
         LIMIT ? OFFSET ?
     `);
     return stmt.all(limit, offset) as MediaEntry[];
@@ -239,11 +242,16 @@ export async function processImageFromPath(
 export async function processImage(
     file: File,
     filename: string
-): Promise<{ original: string; display: string; thumbnail: string }> {
+): Promise<{ original: string; display: string; thumbnail: string; captureDate: string | null }> {
     ensureMediaDirs();
     const baseDir = getMediaDir();
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    const lastModifiedIso =
+        typeof (file as any)?.lastModified === 'number'
+            ? new Date((file as any).lastModified).toISOString()
+            : null;
+    const captureDate = (await extractImageCaptureDate(buffer, filename)) || lastModifiedIso;
     const ext = path.extname(filename).toLowerCase();
     const basename = path.basename(filename, ext);
     const timestamp = Date.now();
@@ -283,6 +291,7 @@ export async function processImage(
         original: path.relative(baseDir, originalPath),
         display: path.relative(baseDir, displayPath),
         thumbnail: path.relative(baseDir, thumbPath),
+        captureDate,
     };
 }
 
@@ -290,11 +299,15 @@ export async function processImage(
 export async function processVideo(
     file: File,
     filename: string
-): Promise<{ original: string; display: string; thumbnail: string }> {
+): Promise<{ original: string; display: string; thumbnail: string; captureDate: string | null }> {
     ensureMediaDirs();
     const baseDir = getMediaDir();
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    const lastModifiedIso =
+        typeof (file as any)?.lastModified === 'number'
+            ? new Date((file as any).lastModified).toISOString()
+            : null;
     const ext = path.extname(filename);
     const basename = path.basename(filename, ext);
     const timestamp = Date.now();
@@ -338,10 +351,13 @@ export async function processVideo(
             .on('error', (err) => reject(err));
     });
 
+    const captureDate = (await extractVideoCaptureDate(originalPath, filename)) || lastModifiedIso;
+
     return {
         original: path.relative(baseDir, originalPath),
         display: path.relative(baseDir, webPath),
         thumbnail: path.relative(baseDir, thumbPath),
+        captureDate,
     };
 }
 
@@ -352,16 +368,17 @@ export function createMediaEntry(
     thumbPath: string,
     mediaType: 'image' | 'video',
     title?: string,
-    date?: string
+    date?: string,
+    rotation: number = 0
 ): number {
     const now = new Date().toISOString();
 
     const stmt = db.prepare(`
         INSERT INTO media (
             title, date, file_path_original, file_path_display,
-            file_path_thumb, media_type, sort_order, uploaded_at
+            file_path_thumb, media_type, sort_order, rotation, uploaded_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+        VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
     `);
 
     const result = stmt.run(
@@ -371,17 +388,84 @@ export function createMediaEntry(
         displayPath,
         thumbPath,
         mediaType,
+        rotation,
         now
     );
 
     return Number(result.lastInsertRowid);
 }
 
+// Extract capture date from an image buffer. Avoid filename heuristics; fall back to upload date.
+export async function extractImageCaptureDate(buffer: Buffer, filename: string): Promise<string | null> {
+    // Try exifr if available
+    try {
+        // Lazy-load to avoid hard dependency if not installed
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const exifr = require('exifr');
+        const parsed = await exifr.parse(buffer, {
+            pick: ['DateTimeOriginal', 'CreateDate', 'ModifyDate', 'DateTime'],
+        });
+        const val =
+            parsed?.DateTimeOriginal ||
+            parsed?.CreateDate ||
+            parsed?.ModifyDate ||
+            parsed?.DateTime;
+        if (val instanceof Date && !Number.isNaN(val.getTime())) {
+            return val.toISOString();
+        }
+        if (typeof val === 'string') {
+            const parsedDate = new Date(val);
+            if (!Number.isNaN(parsedDate.getTime())) {
+                return parsedDate.toISOString();
+            }
+        }
+    } catch (err) {
+        // If exifr is missing or fails, fall through to filename-based heuristic
+    }
+
+    return null;
+}
+
+// Extract capture date from a video file on disk using ffprobe metadata
+export async function extractVideoCaptureDate(fullPath: string, filename: string): Promise<string | null> {
+    try {
+        const metadata: any = await new Promise((resolve, reject) => {
+            ffmpeg.ffprobe(fullPath, (err, data) => {
+                if (err) reject(err);
+                else resolve(data);
+            });
+        });
+
+        const tags =
+            metadata?.format?.tags ||
+            metadata?.streams?.find((s: any) => s.tags)?.tags ||
+            {};
+
+        const candidates: (string | undefined)[] = [
+            tags.creation_time,
+            tags['com.apple.quicktime.creationdate'],
+            tags['date'],
+        ];
+
+        for (const value of candidates) {
+            if (!value) continue;
+            const parsed = new Date(value);
+            if (!Number.isNaN(parsed.getTime())) {
+                return parsed.toISOString();
+            }
+        }
+
+        return null;
+    } catch {
+        return null;
+    }
+}
+
 // Get media by ID
 export function getMediaById(mediaId: number): MediaEntry | undefined {
     const stmt = db.prepare(`
         SELECT media_id, title, date, file_path_original, file_path_thumb,
-               file_path_display, media_type, sort_order, uploaded_at, transcoding_status
+               file_path_display, media_type, sort_order, rotation, uploaded_at, transcoding_status
         FROM media
         WHERE media_id = ?
     `);
@@ -393,7 +477,7 @@ export function getMediaById(mediaId: number): MediaEntry | undefined {
 export function getPendingVideos(): MediaEntry[] {
     const stmt = db.prepare(`
         SELECT media_id, title, date, file_path_original, file_path_thumb,
-               file_path_display, media_type, sort_order, uploaded_at, transcoding_status
+               file_path_display, media_type, sort_order, rotation, uploaded_at, transcoding_status
         FROM media
         WHERE media_type = 'video' AND transcoding_status = 'pending'
         ORDER BY uploaded_at ASC

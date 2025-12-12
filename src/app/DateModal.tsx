@@ -28,6 +28,7 @@ export default function DateModal({ title, date, onClose }: Props) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [selectedMedia, setSelectedMedia] = useState<MediaEntry | null>(null);
+    const [mediaDimensions, setMediaDimensions] = useState<{ width: number; height: number } | null>(null);
 
     useEffect(() => {
         async function fetchDate() {
@@ -102,6 +103,58 @@ export default function DateModal({ title, date, onClose }: Props) {
             setDeleting(false);
             setShowDeleteConfirm(false);
         }
+    };
+
+    // Calculate proper dimensions for rotated media
+    const getDisplayDimensions = () => {
+        if (!selectedMedia || !mediaDimensions) return {
+            container: { maxWidth: '95vw', maxHeight: '85vh' },
+            media: {}
+        };
+
+        const rotation = (selectedMedia.rotation ?? 0) % 360;
+        const isRotated = rotation === 90 || rotation === 270 || rotation === -90 || rotation === -270;
+
+        const maxWidth = window.innerWidth * 0.95;
+        const maxHeight = window.innerHeight * 0.85;
+
+        const { width, height } = mediaDimensions;
+
+        let rotatedWidth, rotatedHeight;
+        if (isRotated) {
+            rotatedWidth = height;
+            rotatedHeight = width;
+        } else {
+            rotatedWidth = width;
+            rotatedHeight = height;
+        }
+
+        const scaleX = maxWidth / rotatedWidth;
+        const scaleY = maxHeight / rotatedHeight;
+        const scale = Math.min(scaleX, scaleY, 1);
+
+        const containerWidth = rotatedWidth * scale;
+        const containerHeight = rotatedHeight * scale;
+
+        let mediaWidth, mediaHeight;
+        if (isRotated) {
+            mediaWidth = containerHeight;
+            mediaHeight = containerWidth;
+        } else {
+            mediaWidth = containerWidth;
+            mediaHeight = containerHeight;
+        }
+
+        return {
+            container: {
+                width: `${containerWidth}px`,
+                height: `${containerHeight}px`,
+            },
+            media: {
+                maxWidth: `${mediaWidth}px`,
+                maxHeight: `${mediaHeight}px`,
+            }
+        };
     };
 
     return (
@@ -199,6 +252,10 @@ export default function DateModal({ title, date, onClose }: Props) {
                                                         src={`/api/media/${item.file_path_thumb}`}
                                                         alt=""
                                                         className="w-full h-full object-cover"
+                                                        style={{
+                                                            transform: `rotate(${item.rotation ?? 0}deg)`,
+                                                            transformOrigin: 'center center',
+                                                        }}
                                                     />
                                                 )}
                                                 {item.media_type === 'video' && item.file_path_thumb && (
@@ -207,6 +264,10 @@ export default function DateModal({ title, date, onClose }: Props) {
                                                             src={`/api/media/${item.file_path_thumb}`}
                                                             alt=""
                                                             className="w-full h-full object-cover"
+                                                            style={{
+                                                                transform: `rotate(${item.rotation ?? 0}deg)`,
+                                                                transformOrigin: 'center center',
+                                                            }}
                                                         />
                                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                                             <div className="rounded-full bg-black/50 p-3">
@@ -271,29 +332,68 @@ export default function DateModal({ title, date, onClose }: Props) {
                         setSelectedMedia(null);
                     }}
                 >
-                    <button
-                        onClick={() => setSelectedMedia(null)}
-                        className="absolute top-4 right-4 text-white hover:text-slate-300 text-4xl leading-none"
-                        aria-label="Close"
+                    <div
+                        className="relative flex flex-col items-center gap-4 max-w-full max-h-full"
                     >
-                        &times;
-                    </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedMedia(null);
+                                setMediaDimensions(null);
+                            }}
+                            className="self-end text-white hover:text-slate-300 text-3xl leading-none cursor-pointer bg-black/50 rounded-full w-10 h-10 flex items-center justify-center"
+                            aria-label="Close"
+                        >
+                            &times;
+                        </button>
 
-                    <div className="max-w-7xl max-h-full" onClick={(e) => e.stopPropagation()}>
-                        {selectedMedia.media_type === 'image' ? (
-                            <img
-                                src={`/api/media/${selectedMedia.file_path_display}`}
-                                alt=""
-                                className="max-w-full max-h-[90vh] object-contain"
-                            />
-                        ) : (
-                            <video
-                                controls
-                                autoPlay
-                                className="max-w-full max-h-[90vh]"
-                                src={`/api/media/${selectedMedia.file_path_display}`}
-                            />
-                        )}
+                        <div
+                            className="flex items-center justify-center"
+                            style={getDisplayDimensions().container}
+                        >
+                            {selectedMedia.media_type === 'image' ? (
+                                <img
+                                    src={`/api/media/${selectedMedia.file_path_display}`}
+                                    alt=""
+                                    className="block"
+                                    onLoad={(e) => {
+                                        const img = e.currentTarget;
+                                        setMediaDimensions({
+                                            width: img.naturalWidth,
+                                            height: img.naturalHeight,
+                                        });
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                        ...getDisplayDimensions().media,
+                                        objectFit: 'contain',
+                                        transform: `rotate(${selectedMedia.rotation ?? 0}deg)`,
+                                        transformOrigin: 'center center',
+                                    }}
+                                />
+                            ) : (
+                                <video
+                                    controls
+                                    autoPlay
+                                    className="block"
+                                    src={`/api/media/${selectedMedia.file_path_display}`}
+                                    onLoadedMetadata={(e) => {
+                                        const video = e.currentTarget;
+                                        setMediaDimensions({
+                                            width: video.videoWidth,
+                                            height: video.videoHeight,
+                                        });
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                        ...getDisplayDimensions().media,
+                                        objectFit: 'contain',
+                                        transform: `rotate(${selectedMedia.rotation ?? 0}deg)`,
+                                        transformOrigin: 'center center',
+                                    }}
+                                />
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

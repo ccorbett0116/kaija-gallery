@@ -207,6 +207,10 @@ export default function MediaSelector({ selectedIds, onChange }: Props) {
                                         src={`/api/media/${item.file_path_thumb}`}
                                         alt=""
                                         className="w-full h-full object-cover pointer-events-none"
+                                        style={{
+                                            transform: `rotate(${item.rotation ?? 0}deg)`,
+                                            transformOrigin: 'center center',
+                                        }}
                                     />
                                 )}
                                 {item.media_type === 'video' && item.file_path_thumb && (
@@ -215,6 +219,10 @@ export default function MediaSelector({ selectedIds, onChange }: Props) {
                                             src={`/api/media/${item.file_path_thumb}`}
                                             alt=""
                                             className="w-full h-full object-cover pointer-events-none"
+                                            style={{
+                                                transform: `rotate(${item.rotation ?? 0}deg)`,
+                                                transformOrigin: 'center center',
+                                            }}
                                         />
                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                             <div className="w-8 h-8 rounded-full bg-black/60 flex items-center justify-center">
