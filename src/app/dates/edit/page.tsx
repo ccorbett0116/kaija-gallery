@@ -31,7 +31,7 @@ export default async function EditDatePage({ searchParams }: PageProps) {
     };
 
     return (
-        <main className="min-h-screen bg-slate-950 text-slate-100">
+        <main className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
             <div className="max-w-2xl mx-auto py-8 px-4">
                 <h1 className="text-2xl font-semibold mb-4">Edit Date</h1>
                 <NewDateForm

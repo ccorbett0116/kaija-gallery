@@ -722,20 +722,20 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                             }}
                         >
                             <div
-                                className="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-md mx-4"
+                                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-6 max-w-md mx-4"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-lg font-semibold text-white mb-2">
+                                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
                                     Delete Media?
                                 </h3>
-                                <p className="text-sm text-slate-300 mb-6">
+                                <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
                                     This will permanently delete the original, thumbnail, and all
                                     associated files. This action cannot be undone.
                                 </p>
                                 <div className="flex gap-3 justify-beginning">
                                     <button
                                         onClick={() => setShowDeleteConfirm(false)}
-                                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-md transition-colors"
+                                        className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-900 dark:text-white text-sm font-medium rounded-md transition-colors"
                                     >
                                         Cancel
                                     </button>
@@ -760,15 +760,15 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                             }}
                         >
                             <div
-                                className="bg-slate-900 border border-red-800 rounded-lg p-6 max-w-md mx-4"
+                                className="bg-white dark:bg-slate-900 border border-red-300 dark:border-red-800 rounded-lg p-6 max-w-md mx-4"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-lg font-semibold text-red-400 mb-2">Error</h3>
-                                <p className="text-sm text-slate-300 mb-6">{error}</p>
+                                <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">Error</h3>
+                                <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">{error}</p>
                                 <div className="flex justify-end">
                                     <button
                                         onClick={() => setError(null)}
-                                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-md transition-colors"
+                                        className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-900 dark:text-white text-sm font-medium rounded-md transition-colors"
                                     >
                                         Close
                                     </button>
@@ -847,13 +847,12 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    rotateImage('ccw');
+                                    handleDeleteClick();
                                 }}
                                 disabled={isPending}
-                                className="p-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-md transition-colors cursor-pointer disabled:opacity-50"
-                                title="Rotate counter-clockwise"
+                                className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-800 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors cursor-pointer"
                             >
-                                ↶
+                                {isPending ? 'Deleting...' : 'Delete'}
                             </button>
                             <button
                                 onClick={(e) => {
@@ -861,7 +860,7 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                                     rotateImage('cw');
                                 }}
                                 disabled={isPending}
-                                className="p-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-md transition-colors cursor-pointer disabled:opacity-50"
+                                className="p-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-900 dark:text-white text-sm font-medium rounded-md transition-colors cursor-pointer disabled:opacity-50"
                                 title="Rotate clockwise"
                             >
                                 ↷
@@ -869,12 +868,13 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDeleteClick();
+                                    rotateImage('ccw');
                                 }}
                                 disabled={isPending}
-                                className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-800 disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors cursor-pointer"
+                                className="p-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-900 dark:text-white text-sm font-medium rounded-md transition-colors cursor-pointer disabled:opacity-50"
+                                title="Rotate counter-clockwise"
                             >
-                                {isPending ? 'Deleting...' : 'Delete'}
+                                ↶
                             </button>
                         </div>
 

@@ -1,6 +1,5 @@
-Investigate jump to date functionality (should query for which media is most recent to that day (x), and jump to the highest multiple of num columns (y) s.t. y<x
 Click media date to update
 left/right buttons on gallery&date modals
-Edit Date page light mode
-Delete Media Confirmation Light Modal
+Dropdown shouldnt find fields already used in dateEdit Date page light mode
+Investigate jump to date functionality (should query for which media is most recent to that day (x), and jump to the highest multiple of num columns (y) s.t. y<x
 Add jump to date on timeline
