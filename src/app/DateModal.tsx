@@ -110,13 +110,13 @@ export default function DateModal({ title, date, onClose }: Props) {
             onClick={onClose}
         >
             <div
-                className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-700 rounded-lg shadow-2xl [&::-webkit-scrollbar]:hidden"
+                className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xl text-slate-900 dark:text-slate-100 [&::-webkit-scrollbar]:hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 hover:bg-slate-700 transition-colors"
+                    className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 transition-colors"
                     aria-label="Close modal"
                 >
                     <svg
@@ -137,23 +137,23 @@ export default function DateModal({ title, date, onClose }: Props) {
 
                 <div className="p-6">
                     {loading && (
-                        <div className="flex items-center justify-center py-12">
-                            <div className="text-slate-400">Loading...</div>
-                        </div>
-                    )}
+                            <div className="flex items-center justify-center py-12">
+                                <div className="text-slate-500 dark:text-slate-400">Loading...</div>
+                            </div>
+                        )}
 
-                    {error && (
-                        <div className="flex items-center justify-center py-12">
-                            <div className="text-red-400">Error: {error}</div>
-                        </div>
-                    )}
+                        {error && (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="text-red-600 dark:text-red-400">Error: {error}</div>
+                            </div>
+                        )}
 
                     {dateEntry && (
                         <div>
                             {/* Header */}
                             <div className="mb-6">
                                 <h2 className="text-2xl font-semibold mb-2">{dateEntry.title}</h2>
-                                <div className="text-slate-400 text-sm">
+                                <div className="text-slate-600 dark:text-slate-400 text-sm">
                                     {formatDisplayDate(dateEntry.date)}
                                 </div>
                             </div>
@@ -164,12 +164,12 @@ export default function DateModal({ title, date, onClose }: Props) {
                                     {dateEntry.fields.map((field) => (
                                         <div
                                             key={field.field_id}
-                                            className="border border-slate-700 rounded-lg p-4"
+                                            className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-transparent"
                                         >
-                                            <div className="text-sm font-medium text-slate-400 mb-1">
+                                            <div className="text-sm font-medium text-slate-700 dark:text-slate-400 mb-1">
                                                 {field.field_name}
                                             </div>
-                                            <div className="text-slate-100 whitespace-pre-wrap">
+                                            <div className="text-slate-900 dark:text-slate-100 whitespace-pre-wrap">
                                                 {formatFieldValue(field.value, field.field_type)}
                                             </div>
                                         </div>
@@ -178,7 +178,7 @@ export default function DateModal({ title, date, onClose }: Props) {
                             )}
 
                             {dateEntry.fields.length === 0 && (
-                                <div className="text-slate-500 text-sm italic">
+                                <div className="text-slate-600 dark:text-slate-500 text-sm italic">
                                     No additional details for this date.
                                 </div>
                             )}
@@ -192,7 +192,7 @@ export default function DateModal({ title, date, onClose }: Props) {
                                             <button
                                                 key={item.media_id}
                                                 onClick={() => setSelectedMedia(item)}
-                                                className="relative aspect-square rounded-lg overflow-hidden bg-slate-800 hover:opacity-90 transition-opacity cursor-pointer"
+                                                className="relative aspect-square rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-800 hover:opacity-90 transition-opacity cursor-pointer"
                                             >
                                                 {item.media_type === 'image' && item.file_path_thumb && (
                                                     <img
@@ -228,10 +228,10 @@ export default function DateModal({ title, date, onClose }: Props) {
                             )}
 
                             {/* Action Buttons */}
-                            <div className="mt-8 pt-6 border-t border-slate-700 flex gap-3">
+                            <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-700 flex gap-3">
                                 <button
                                     onClick={handleEdit}
-                                    className="flex-1 px-4 py-2 bg-sky-600 hover:bg-sky-500 rounded-lg font-medium transition-colors"
+                                    className="flex-1 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-slate-50 dark:text-slate-100 rounded-lg font-medium transition-colors"
                                     disabled={deleting}
                                 >
                                     Edit
@@ -240,8 +240,8 @@ export default function DateModal({ title, date, onClose }: Props) {
                                     onClick={handleDelete}
                                     className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
                                         showDeleteConfirm
-                                            ? 'bg-red-600 hover:bg-red-500'
-                                            : 'bg-slate-700 hover:bg-slate-600'
+                                            ? 'bg-red-600 hover:bg-red-500 text-slate-50'
+                                            : 'bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100'
                                     }`}
                                     disabled={deleting}
                                 >
@@ -250,7 +250,7 @@ export default function DateModal({ title, date, onClose }: Props) {
                                 {showDeleteConfirm && (
                                     <button
                                         onClick={() => setShowDeleteConfirm(false)}
-                                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium transition-colors"
+                                        className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100 rounded-lg font-medium transition-colors"
                                         disabled={deleting}
                                     >
                                         Cancel

@@ -125,7 +125,7 @@ const MediaItem = memo(function MediaItem({
             className={`relative rounded-md overflow-hidden border-2 transition-colors w-full h-full ${
                 isSelected
                     ? 'border-sky-500'
-                    : 'border-transparent hover:border-slate-600'
+                    : 'border-transparent hover:border-slate-300 dark:hover:border-slate-600'
             }`}
         >
             {item.media_type === 'image' ? (

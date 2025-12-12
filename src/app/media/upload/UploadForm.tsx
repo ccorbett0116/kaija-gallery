@@ -279,29 +279,29 @@ export default function UploadForm() {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-                <div className="rounded-md border border-red-800 bg-red-950/50 p-4">
-                    <p className="text-sm text-red-300">
+                <div className="rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/50 p-4">
+                    <p className="text-sm text-red-700 dark:text-red-300">
                         <strong>Error:</strong> {error}
                     </p>
                 </div>
             )}
 
             {selectedFiles.length > 0 && (
-                <div className="rounded-md border p-4 border-sky-800 bg-sky-950/50">
+                <div className="rounded-md border p-4 border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/50">
                     <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-sky-300">
+                        <p className="text-sm font-medium text-sky-700 dark:text-sky-300">
                             {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected
                         </p>
-                        <p className="text-sm font-mono text-sky-300">
+                        <p className="text-sm font-mono text-sky-700 dark:text-sky-300">
                             {formatSize(totalSize)}
                         </p>
                     </div>
                     {selectedFiles.length > 0 && (
                         <ul className="mt-2 space-y-1 max-h-40 overflow-y-auto">
                             {selectedFiles.map((file, idx) => (
-                                <li key={idx} className="text-xs text-slate-400 flex justify-between">
+                                <li key={idx} className="text-xs text-slate-600 dark:text-slate-400 flex justify-between">
                                     <span className="truncate flex-1">{file.name}</span>
-                                    <span className="ml-2 font-mono text-slate-500">{formatSize(file.size)}</span>
+                                    <span className="ml-2 font-mono text-slate-500 dark:text-slate-500">{formatSize(file.size)}</span>
                                 </li>
                             ))}
                         </ul>
@@ -310,11 +310,11 @@ export default function UploadForm() {
             )}
 
             {uploadProgress.length > 0 && (
-                <div className="rounded-md border border-sky-800 bg-sky-950/50 p-4 space-y-3">
+                <div className="rounded-md border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/50 p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-sky-300">Uploading...</p>
+                        <p className="text-sm font-medium text-sky-700 dark:text-sky-300">Uploading...</p>
                         {wakeLockActive && (
-                            <span className="text-xs text-green-400">
+                            <span className="text-xs text-green-700 dark:text-green-400">
                                 Screen will stay awake
                             </span>
                         )}
@@ -326,16 +326,16 @@ export default function UploadForm() {
                             ? 'Retrying...'
                             : `${item.progress}%`;
                         const statusColor = item.status === 'waiting' || item.status === 'retrying'
-                            ? 'text-amber-400'
-                            : 'text-slate-400';
+                            ? 'text-amber-700 dark:text-amber-400'
+                            : 'text-slate-600 dark:text-slate-400';
 
                         return (
                             <div key={item.fileName} className="space-y-1">
                                 <div className="flex justify-between text-xs">
-                                    <span className="truncate flex-1 text-slate-400">{item.fileName}</span>
+                                    <span className="truncate flex-1 text-slate-700 dark:text-slate-400">{item.fileName}</span>
                                     <span className={`ml-2 font-mono ${statusColor}`}>{statusText}</span>
                                 </div>
-                                <div className="w-full bg-slate-800 rounded-full h-2">
+                                <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2">
                                     <div
                                         className={`h-2 rounded-full transition-all duration-300 ${
                                             item.status === 'waiting' || item.status === 'retrying'
@@ -363,27 +363,27 @@ export default function UploadForm() {
                     required
                     disabled={isPending}
                     onChange={handleFileChange}
-                    className="block w-full text-sm text-slate-400
+                    className="block w-full text-sm text-slate-700 dark:text-slate-400
                              file:mr-4 file:py-2 file:px-4
                              file:rounded-md file:border-0
                              file:text-sm file:font-medium
-                             file:bg-sky-600 file:text-slate-100
+                             file:bg-sky-600 file:text-slate-50 dark:file:text-slate-100
                              hover:file:bg-sky-500
                              disabled:opacity-50 disabled:cursor-not-allowed
                              cursor-pointer"
                 />
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-600 dark:text-slate-500">
                     Supports: JPEG, PNG, HEIC, MP4, MOV, and other common formats.
                     Large files ({'>'}5MB) are uploaded in chunks - if connection is lost, upload will automatically resume.
                     Screen will stay awake during chunked uploads (you can lock your phone).
                 </p>
             </div>
 
-            <div className="rounded-md border border-slate-800 bg-slate-900 p-4">
-                <p className="text-sm text-slate-300">
+            <div className="rounded-md border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4">
+                <p className="text-sm text-slate-800 dark:text-slate-300">
                     <strong>What happens during upload:</strong>
                 </p>
-                <ul className="mt-2 text-xs text-slate-400 space-y-1 list-disc list-inside">
+                <ul className="mt-2 text-xs text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside">
                     <li><strong>Small images (&lt;5MB):</strong> Fast upload, WebP thumbnail created, full-res JPEG/PNG for display</li>
                     <li><strong>Large images (≥5MB):</strong> Chunked upload with resume support, same processing as small images</li>
                     <li><strong>Videos:</strong> Chunked upload, H.264 web version transcoded in background, poster frame generated</li>
@@ -394,7 +394,7 @@ export default function UploadForm() {
             <button
                 type="submit"
                 disabled={isPending}
-                className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-slate-50 dark:text-slate-100 hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isPending ? 'Uploading...' : 'Upload Media'}
             </button>

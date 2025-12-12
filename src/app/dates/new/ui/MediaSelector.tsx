@@ -142,7 +142,7 @@ export default function MediaSelector({ selectedIds, onChange }: Props) {
     };
 
     return (
-        <div className="border border-slate-700 rounded-lg p-4">
+        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-white dark:bg-transparent">
             <div className="flex items-center justify-between mb-3">
                 <label className="text-sm font-medium">
                     Media ({selectedIds.length} selected)
@@ -150,7 +150,7 @@ export default function MediaSelector({ selectedIds, onChange }: Props) {
                 <button
                     type="button"
                     onClick={() => setIsOpen(!isOpen)}
-                    className="text-sm text-sky-400 hover:text-sky-300"
+                    className="text-sm text-sky-600 dark:text-sky-400 hover:text-sky-500 dark:hover:text-sky-300"
                 >
                     {isOpen ? 'Close' : 'Select Media'}
                 </button>
@@ -159,7 +159,7 @@ export default function MediaSelector({ selectedIds, onChange }: Props) {
             {/* Selected Media Preview (when closed) */}
             {!isOpen && selectedMedia.length > 0 && (
                 <div>
-                    <div className="text-xs text-slate-500 mb-2">
+                    <div className="text-xs text-slate-600 dark:text-slate-500 mb-2">
                         Click and hold to reorder
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -194,7 +194,7 @@ export default function MediaSelector({ selectedIds, onChange }: Props) {
                                 }}
                                 onTouchMove={handleTouchMove}
                                 onTouchEnd={handleTouchEnd}
-                                className={`relative aspect-square rounded overflow-hidden bg-slate-800 cursor-move transition-all ${
+                                className={`relative aspect-square rounded overflow-hidden bg-slate-200 dark:bg-slate-800 cursor-move transition-all ${
                                     draggedIndex === index
                                         ? 'opacity-50 scale-95'
                                         : dragOverIndex === index

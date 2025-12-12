@@ -10,10 +10,10 @@ export default function IdeasPage() {
     const ideas = listIdeas();
 
     return (
-        <main className="min-h-screen bg-slate-950 text-slate-100">
+        <main className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
             <div className="max-w-6xl mx-auto py-8 px-4 space-y-6">
                 <header
-                    className="fixed top-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-sm border-b border-slate-800">
+                    className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800">
                     <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
                         <h1 className="text-2xl font-semibold">Ideas</h1>
 
@@ -21,21 +21,21 @@ export default function IdeasPage() {
                         <nav className="flex items-center gap-2">
                             <Link
                                 href="/"
-                                className="text-sm text-slate-400 hover:text-sky-400 px-3 py-2 leading-none"
+                                className="text-sm text-slate-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 px-3 py-2 leading-none"
                             >
                                 Dates
                             </Link>
 
                             <Link
                                 href="/media"
-                                className="text-sm text-slate-400 hover:text-sky-400 px-3 py-2 leading-none"
+                                className="text-sm text-slate-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 px-3 py-2 leading-none"
                             >
                                 Gallery
                             </Link>
 
                             <Link
                                 href="/ideas/new"
-                                className="inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 min-w-[110px] text-sm font-medium hover:bg-sky-500"
+                                className="inline-flex items-center justify-center rounded-md bg-sky-600 px-4 py-2 min-w-[110px] text-sm font-medium text-slate-50 dark:text-slate-100 hover:bg-sky-500"
                             >
                                 Add List
                             </Link>
@@ -51,7 +51,7 @@ export default function IdeasPage() {
                     </div>
 
                     {totalCount === 0 ? (
-                        <p className="text-slate-400 text-sm">
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">
                             No lists yet. Click &quot;Add List&quot; to create one.
                         </p>
                     ) : (

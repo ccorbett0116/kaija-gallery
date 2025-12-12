@@ -35,7 +35,7 @@ export default function NewIdeaForm({
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-                <div className="rounded-md bg-red-900/20 border border-red-800 px-4 py-3 text-sm text-red-400">
+                <div className="rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
                     {error}
                 </div>
             )}
@@ -47,7 +47,7 @@ export default function NewIdeaForm({
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full rounded-md bg-slate-900 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-sky-500"
+                    className="w-full rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring focus:ring-sky-500"
                     required
                 />
             </div>
@@ -60,13 +60,13 @@ export default function NewIdeaForm({
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     rows={8}
-                    className="w-full rounded-md bg-slate-900 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-sky-500"
+                    className="w-full rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring focus:ring-sky-500"
                 />
             </div>
 
             <button
                 type="submit"
-                className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium hover:bg-sky-500"
+                className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-slate-50 dark:text-slate-100 hover:bg-sky-500"
             >
                 {submitLabel}
             </button>

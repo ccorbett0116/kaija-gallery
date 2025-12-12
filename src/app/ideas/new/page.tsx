@@ -5,11 +5,14 @@ import NewIdeaForm from './ui/NewIdeaForm';
 
 export default function NewIdeaPage() {
     return (
-        <main className="min-h-screen bg-slate-950 text-slate-100">
+        <main className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
             <div className="max-w-2xl mx-auto py-8 px-4">
                 <div className="flex justify-between items-center mb-4">
                     <h1 className="text-2xl font-semibold">Add an Idea</h1>
-                    <Link href="/ideas" className="text-sm text-slate-400 hover:text-sky-400">
+                    <Link
+                        href="/ideas"
+                        className="text-sm text-slate-600 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400"
+                    >
                         Back to Ideas
                     </Link>
                 </div>

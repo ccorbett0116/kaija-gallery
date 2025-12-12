@@ -213,7 +213,8 @@ export default function TimelineView({ dates }: Props) {
                 >
                     <path
                         d={generatePath()}
-                        stroke="#475569"
+                        className="text-slate-300 dark:text-slate-600"
+                        stroke="currentColor"
                         strokeWidth={STROKE_WIDTH}
                         fill="none"
                         strokeLinecap="round"
@@ -240,7 +241,7 @@ export default function TimelineView({ dates }: Props) {
                             {/* Pin Circle */}
                             <div className="relative">
                                 <div
-                                    className="rounded-full bg-sky-500 border-2 border-slate-900 shadow-lg"
+                                    className="rounded-full bg-sky-500 border-2 border-slate-300 dark:border-slate-900 shadow-lg"
                                     style={{
                                         width: PIN_SIZE,
                                         height: PIN_SIZE,
@@ -260,7 +261,7 @@ export default function TimelineView({ dates }: Props) {
                                     }}
                                 >
                                     <div
-                                        className="bg-slate-900 border border-slate-700 rounded-lg shadow-xl hover:border-sky-500 transition-colors overflow-hidden"
+                                        className="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl hover:border-sky-500 transition-colors overflow-hidden"
                                         style={{
                                             paddingLeft: CARD_PADDING_X,
                                             paddingRight: CARD_PADDING_X,
@@ -271,7 +272,7 @@ export default function TimelineView({ dates }: Props) {
                                         {/* Media Thumbnail */}
                                         {date.first_media_thumb && (
                                             <div
-                                                className="mb-2 rounded overflow-hidden bg-slate-800 relative"
+                                                className="mb-2 rounded overflow-hidden bg-slate-200 dark:bg-slate-800 relative"
                                                 style={{
                                                     width: Math.max(80, 120 * SCALE),
                                                     height: Math.max(60, 90 * SCALE),
@@ -299,13 +300,13 @@ export default function TimelineView({ dates }: Props) {
                                         )}
 
                                         <div
-                                            className="font-medium"
+                                            className="font-medium text-slate-900 dark:text-slate-100"
                                             style={{ fontSize: TITLE_SIZE }}
                                         >
                                             {date.title}
                                         </div>
                                         <div
-                                            className="text-slate-400"
+                                            className="text-slate-600 dark:text-slate-400"
                                             style={{
                                                 fontSize: DATE_SIZE,
                                                 marginTop: CARD_PADDING_Y / 2,
@@ -335,11 +336,11 @@ export default function TimelineView({ dates }: Props) {
                 {showScrollTop && (
                     <button
                         onClick={scrollToTop}
-                        className="p-3 rounded-full bg-slate-800 border border-slate-700 hover:border-sky-500 hover:bg-slate-700 transition-colors shadow-lg"
+                        className="p-3 rounded-full bg-white border border-slate-200 text-slate-700 hover:border-sky-500 hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 hover:dark:bg-slate-700 transition-colors shadow-lg"
                         aria-label="Scroll to top"
                     >
                         <svg
-                            className="w-5 h-5 text-sky-500"
+                            className="w-5 h-5 text-sky-600 dark:text-sky-500"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -356,11 +357,11 @@ export default function TimelineView({ dates }: Props) {
                 {showScrollBottom && (
                     <button
                         onClick={scrollToBottom}
-                        className="p-3 rounded-full bg-slate-800 border border-slate-700 hover:border-sky-500 hover:bg-slate-700 transition-colors shadow-lg"
+                        className="p-3 rounded-full bg-white border border-slate-200 text-slate-700 hover:border-sky-500 hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 hover:dark:bg-slate-700 transition-colors shadow-lg"
                         aria-label="Scroll to bottom"
                     >
                         <svg
-                            className="w-5 h-5 text-sky-500"
+                            className="w-5 h-5 text-sky-600 dark:text-sky-500"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"

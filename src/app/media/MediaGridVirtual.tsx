@@ -549,7 +549,7 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
 
                 <button
                     onClick={handleJumpToTop}
-                    className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-full shadow-lg transition-colors flex items-center gap-2"
+                    className="px-4 py-3 bg-white text-slate-700 border border-slate-200 hover:border-sky-500 hover:bg-slate-100 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600 text-sm font-medium rounded-full shadow-lg transition-colors flex items-center gap-2"
                     title="Jump to top (newest)"
                 >
                     <svg
@@ -570,7 +570,7 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
 
                 <button
                     onClick={handleJumpToBottom}
-                    className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-full shadow-lg transition-colors flex items-center gap-2"
+                    className="px-4 py-3 bg-white text-slate-700 border border-slate-200 hover:border-sky-500 hover:bg-slate-100 dark:bg-slate-700 dark:text-white dark:border-slate-600 dark:hover:bg-slate-600 text-sm font-medium rounded-full shadow-lg transition-colors flex items-center gap-2"
                     title="Jump to bottom (oldest)"
                 >
                     <svg

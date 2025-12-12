@@ -157,10 +157,10 @@ function AddressInput({
                 onChange={(e) => onChange(e.target.value)}
                 onFocus={() => setShowSuggestions(true)}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                className="w-full rounded-md bg-slate-900 border border-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring focus:ring-sky-500"
+                className="w-full rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring focus:ring-sky-500"
             />
             {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
                     {suggestions.map((suggestion, idx) => (
                         <button
                             key={`${suggestion}-${idx}`}
@@ -169,7 +169,7 @@ function AddressInput({
                                 onChange(suggestion);
                                 setSuggestions([]);
                             }}
-                            className="w-full text-left px-3 py-2 text-xs hover:bg-slate-800 border-b border-slate-800 last:border-b-0"
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 border-b border-slate-200 dark:border-slate-800 last:border-b-0 text-slate-900 dark:text-slate-100"
                         >
                             {suggestion}
                         </button>
@@ -423,7 +423,7 @@ export default function NewDateForm({
                         type="text"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        className="w-full rounded-md bg-slate-900 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-sky-500"
+                        className="w-full rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring focus:ring-sky-500"
                         required
                     />
                 </label>
@@ -435,7 +435,7 @@ export default function NewDateForm({
                         type="date"
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
-                        className="w-full rounded-md bg-slate-900 border border-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-sky-500"
+                        className="w-full rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring focus:ring-sky-500"
                         required
                     />
                 </label>
@@ -448,14 +448,14 @@ export default function NewDateForm({
                         <button
                             type="button"
                             onClick={() => setShowManageFields(true)}
-                            className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:border-sky-500"
+                            className="text-xs rounded-md border border-slate-200 dark:border-slate-700 px-2 py-1 hover:border-sky-500"
                         >
                             Manage Fields
                         </button>
                         <button
                             type="button"
                             onClick={addField}
-                            className="text-xs rounded-md border border-slate-700 px-2 py-1 hover:border-sky-500"
+                            className="text-xs rounded-md border border-slate-200 dark:border-slate-700 px-2 py-1 hover:border-sky-500"
                         >
                             + Add Field
                         </button>
@@ -486,16 +486,16 @@ export default function NewDateForm({
                                             }
                                             onFocus={() => setActiveSuggestions(field.id)}
                                             onBlur={() => setTimeout(() => setActiveSuggestions(null), 200)}
-                                            className="w-full rounded-md bg-slate-900 border border-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring focus:ring-sky-500"
+                                            className="w-full rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring focus:ring-sky-500"
                                         />
                                         {showSuggestions && (
-                                            <div className="absolute z-10 w-full mt-1 bg-slate-900 border border-slate-700 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                                            <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-40 overflow-y-auto">
                                                 {fieldSuggestions.map((suggestion) => (
                                                     <button
                                                         key={suggestion.field_id}
                                                         type="button"
                                                         onClick={() => selectSuggestion(field.id, suggestion)}
-                                                        className="w-full text-left px-3 py-2 text-xs hover:bg-slate-800 flex items-center justify-between"
+                                                        className="w-full text-left px-3 py-2 text-xs hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between text-slate-900 dark:text-slate-100"
                                                     >
                                                         <span>{suggestion.field_name}</span>
                                                         <span className="text-slate-500 text-[10px]">
@@ -514,7 +514,7 @@ export default function NewDateForm({
                                             onChange={(e) =>
                                                 updateField(field.id, 'type', e.target.value)
                                             }
-                                            className="rounded-md bg-slate-900 border border-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring focus:ring-sky-500"
+                                            className="rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring focus:ring-sky-500"
                                         >
                                             {FIELD_TYPE_OPTIONS.map((option) => (
                                                 <option key={option.value} value={option.value}>
@@ -554,7 +554,7 @@ export default function NewDateForm({
                                             }}
                                             rows={1}
                                             data-auto-resize="true"
-                                            className="rounded-md bg-slate-900 border border-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring focus:ring-sky-500 resize-none overflow-hidden"
+                                            className="rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring focus:ring-sky-500 resize-none overflow-hidden"
                                             style={{ minHeight: '34px' }}
                                         />
                                     ) : (
@@ -566,7 +566,7 @@ export default function NewDateForm({
                                             onChange={(e) =>
                                                 updateField(field.id, 'value', e.target.value)
                                             }
-                                            className="rounded-md bg-slate-900 border border-slate-800 px-3 py-2 text-xs focus:outline-none focus:ring focus:ring-sky-500"
+                                            className="rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring focus:ring-sky-500"
                                         />
                                     )}
                                     <button
@@ -601,14 +601,14 @@ export default function NewDateForm({
             </div>
 
             {error && (
-                <div className="rounded-md bg-red-900/20 border border-red-800 px-4 py-3 text-sm text-red-400">
+                <div className="rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
                     {error}
                 </div>
             )}
 
             <button
                 type="submit"
-                className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium hover:bg-sky-500"
+                className="rounded-md bg-sky-600 px-4 py-2 text-sm font-medium text-slate-50 dark:text-slate-100 hover:bg-sky-500"
             >
                 {submitLabel}
             </button>

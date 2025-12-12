@@ -65,7 +65,7 @@ export default function IdeaModal({ idea, onClose }: Props) {
             onClick={onClose}
         >
             <div
-                className="relative w-full max-w-lg bg-slate-900 border border-slate-700 rounded-lg shadow-2xl"
+                className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xl text-slate-900 dark:text-slate-100"
                 onClick={(e) => e.stopPropagation()}
             >
                 <form onSubmit={handleSave} className="p-6 space-y-4">
@@ -77,7 +77,7 @@ export default function IdeaModal({ idea, onClose }: Props) {
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-sky-500"
+                            className="w-full rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring focus:ring-sky-500"
                             required
                         />
                     </div>
@@ -90,16 +90,16 @@ export default function IdeaModal({ idea, onClose }: Props) {
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             rows={10}
-                            className="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-sky-500"
+                            className="w-full rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring focus:ring-sky-500"
                         />
                     </div>
 
-                        <div className="flex justify-between items-center pt-4 border-t border-slate-700">
+                        <div className="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-slate-700">
                             <button
                                 type="button"
                                 onClick={() => setShowDeleteConfirm(true)}
                                 disabled={isDeleting || isSaving}
-                                className="px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-900/50 rounded-md disabled:opacity-50"
+                                className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/50 rounded-md disabled:opacity-50"
                             >
                                 {isDeleting ? 'Deleting...' : 'Delete'}
                             </button>
@@ -108,14 +108,14 @@ export default function IdeaModal({ idea, onClose }: Props) {
                                 type="button"
                                 onClick={onClose}
                                 disabled={isSaving}
-                                className="px-4 py-2 text-sm font-medium bg-slate-700 hover:bg-slate-600 rounded-md"
+                                className="px-4 py-2 text-sm font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100 rounded-md"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
                                 disabled={isSaving || isDeleting}
-                                className="px-4 py-2 text-sm font-medium bg-sky-600 hover:bg-sky-500 rounded-md disabled:opacity-50"
+                                className="px-4 py-2 text-sm font-medium bg-sky-600 hover:bg-sky-500 text-slate-50 dark:text-slate-100 rounded-md disabled:opacity-50"
                             >
                                 {isSaving ? 'Saving...' : 'Save'}
                             </button>
@@ -130,24 +130,24 @@ export default function IdeaModal({ idea, onClose }: Props) {
                     onClick={() => setShowDeleteConfirm(false)}
                 >
                     <div
-                        className="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-sm w-full"
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-6 max-w-sm w-full text-slate-900 dark:text-slate-100"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <h3 className="text-lg font-semibold mb-2">Delete list?</h3>
-                        <p className="text-sm text-slate-300 mb-6">
+                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
                             This will permanently delete this list and its content. This action cannot be undone.
                         </p>
                         <div className="flex gap-3 justify-end">
                             <button
                                 onClick={() => setShowDeleteConfirm(false)}
-                                className="px-4 py-2 text-sm font-medium bg-slate-800 hover:bg-slate-700 rounded-md"
+                                className="px-4 py-2 text-sm font-medium bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100 rounded-md"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleDeleteConfirm}
                                 disabled={isDeleting}
-                                className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 rounded-md disabled:opacity-50"
+                                className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-slate-50 dark:text-slate-100 rounded-md disabled:opacity-50"
                             >
                                 {isDeleting ? 'Deleting...' : 'Delete'}
                             </button>

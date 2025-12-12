@@ -154,13 +154,13 @@ export default function IdeasGrid({ ideas }: Props) {
                                 if (el) itemRefs.current.set(idea.idea_id, el);
                                 else itemRefs.current.delete(idea.idea_id);
                             }}
-                            className="w-full bg-slate-900 border border-slate-800 rounded-lg p-4 space-y-2"
+                            className="w-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-2"
                             // This max-width should roughly match the column width
                             style={{ maxWidth: '300px' }}
                         >
-                            <h3 className="font-semibold text-sky-400">{idea.title}</h3>
+                            <h3 className="font-semibold text-slate-900 dark:text-sky-400">{idea.title}</h3>
                             {idea.content && (
-                                <p className="text-sm text-slate-400 whitespace-pre-wrap">{idea.content}</p>
+                                <p className="text-sm text-slate-700 dark:text-slate-400 whitespace-pre-wrap">{idea.content}</p>
                             )}
                         </div>
                     ))}
@@ -174,11 +174,11 @@ export default function IdeasGrid({ ideas }: Props) {
                             <button
                                 key={idea.idea_id}
                                 onClick={() => setSelectedIdea(idea)}
-                                className="text-left bg-slate-900 border border-slate-800 rounded-lg p-4 break-inside-avoid hover:border-sky-500 transition-colors"
+                                className="text-left bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 break-inside-avoid hover:border-sky-500 transition-colors"
                             >
-                                <h3 className="font-semibold text-sky-400">{idea.title}</h3>
+                                <h3 className="font-semibold text-slate-900 dark:text-sky-400">{idea.title}</h3>
                                 {idea.content && (
-                                    <p className="text-sm text-slate-400 whitespace-pre-wrap">{idea.content}</p>
+                                    <p className="text-sm text-slate-700 dark:text-slate-400 whitespace-pre-wrap">{idea.content}</p>
                                 )}
                             </button>
                         ))}
