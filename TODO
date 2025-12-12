@@ -1,6 +1,6 @@
 left/right buttons on gallery&date modals
 Dropdown shouldnt find fields already used in dateEdit Date page light mode
-Investigate jump to date functionality (should query for which media is most recent to that day (x), and jump to the highest multiple of num columns (y) s.t. y<x
+Investigate jump to date functionality (should query for which media is most recent (date, then fallback to upload date) to that day (x), and jump to the highest multiple of num columns (y) s.t. y<x)
 Add jump to date on timeline
 
 Verify mobile UI's (especially date pickers/upload media)
