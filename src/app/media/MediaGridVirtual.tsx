@@ -66,6 +66,15 @@ function updateRotation(store: ItemStore, mediaId: number, rotation: number) {
     notifySubscribers(store);
 }
 
+function updateMediaDate(store: ItemStore, mediaId: number, date: string | null) {
+    store.items.forEach((item, key) => {
+        if (item.media_id === mediaId) {
+            store.items.set(key, { ...item, date });
+        }
+    });
+    notifySubscribers(store);
+}
+
 function deleteItem(store: ItemStore, mediaId: MediaEntry['media_id']) {
     // Find the index to delete
     let deleteIndex = -1;
@@ -275,6 +284,7 @@ const MediaRow = memo(function MediaRow({
 export default function MediaGridVirtual({ initialTotal }: Props) {
     const router = useRouter();
     const virtuosoRef = useRef<VirtuosoHandle>(null);
+    const dateInputRef = useRef<HTMLInputElement | null>(null);
 
     // Create store once
     const storeRef = useRef<ItemStore | null>(null);
@@ -286,34 +296,11 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
     const [totalCount, setTotalCount] = useState(initialTotal);
     const [selectedMedia, setSelectedMedia] = useState<MediaEntry | null>(null);
     const [isPending, startTransition] = useTransition();
+    const [isUpdatingDate, setIsUpdatingDate] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showJumpPicker, setShowJumpPicker] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
-    const rotateImage = useCallback(
-        (direction: 'cw' | 'ccw') => {
-            if (!selectedMedia) return;
-            const delta = direction === 'cw' ? 90 : -90;
-            startTransition(async () => {
-                try {
-                    const res = await fetch('/api/media/rotate', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ mediaId: selectedMedia.media_id, delta }),
-                    });
-                    if (!res.ok) throw new Error('Rotate failed');
-                    const data = (await res.json()) as { rotation: number };
-                    setSelectedMedia((prev) => (prev ? { ...prev, rotation: data.rotation } : prev));
-                    updateRotation(store, selectedMedia.media_id, data.rotation);
-                } catch (err) {
-                    console.error(err);
-                    setError('Failed to rotate media');
-                }
-            });
-        },
-        [selectedMedia, startTransition, store]
-    );
-
     // Dynamic layout based on window size
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
@@ -346,6 +333,7 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
 
     const loadingRangesRef = useRef<Set<string>>(new Set());
     const initialLoadDoneRef = useRef(false);
+    const lastVisibleRangeRef = useRef<{ startRow: number; endRow: number }>({ startRow: 0, endRow: 0 });
 
     const totalRows = Math.ceil(totalCount / COLUMNS);
 
@@ -381,6 +369,99 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
         [store, totalCount]
     );
 
+    const rotateImage = useCallback(
+        (direction: 'cw' | 'ccw') => {
+            if (!selectedMedia) return;
+            const delta = direction === 'cw' ? 90 : -90;
+            startTransition(async () => {
+                try {
+                    const res = await fetch('/api/media/rotate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ mediaId: selectedMedia.media_id, delta }),
+                    });
+                    if (!res.ok) throw new Error('Rotate failed');
+                    const data = (await res.json()) as { rotation: number };
+                    setSelectedMedia((prev) => (prev ? { ...prev, rotation: data.rotation } : prev));
+                    updateRotation(store, selectedMedia.media_id, data.rotation);
+                } catch (err) {
+                    console.error(err);
+                    setError('Failed to rotate media');
+                }
+            });
+        },
+        [selectedMedia, startTransition, store]
+    );
+
+    const formatDateForInput = useCallback((value: string | null) => {
+        if (!value) return '';
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return '';
+        const offsetMinutes = parsed.getTimezoneOffset();
+        const local = new Date(parsed.getTime() - offsetMinutes * 60000);
+        return local.toISOString().slice(0, 16);
+    }, []);
+
+    const openDatePicker = useCallback(
+        (event?: React.MouseEvent) => {
+            event?.stopPropagation();
+            if (!selectedMedia || !dateInputRef.current) return;
+            const defaultValue = selectedMedia.date || selectedMedia.uploaded_at;
+            const input = dateInputRef.current as HTMLInputElement & { showPicker?: () => void };
+            input.value = formatDateForInput(defaultValue) || '';
+            if (typeof input.showPicker === 'function') {
+                input.showPicker();
+            } else {
+                input.focus();
+                input.click();
+            }
+        },
+        [selectedMedia, formatDateForInput]
+    );
+
+    const handleDateChange = useCallback(
+        async (value: string) => {
+            if (!selectedMedia) return;
+            setIsUpdatingDate(true);
+            setError(null);
+
+            try {
+                const parsed = new Date(value);
+                if (Number.isNaN(parsed.getTime())) {
+                    throw new Error('Invalid date');
+                }
+
+                const isoDate = parsed.toISOString();
+                const res = await fetch('/api/media/date', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mediaId: selectedMedia.media_id, date: isoDate }),
+                });
+                const data = (await res.json()) as { date?: string; error?: string };
+
+                if (!res.ok || !data.date) {
+                    throw new Error(data.error || 'Failed to update date');
+                }
+
+                setSelectedMedia((prev) => (prev ? { ...prev, date: data.date } : prev));
+                updateMediaDate(store, selectedMedia.media_id, data.date);
+
+                // Reload currently visible range to reflect updated ordering
+                const { startRow, endRow } = lastVisibleRangeRef.current;
+                const startIndex = startRow * COLUMNS;
+                const endIndex = Math.min(totalCount - 1, (endRow + 1) * COLUMNS - 1);
+                if (startIndex <= endIndex) {
+                    await loadRange(startIndex, endIndex);
+                }
+            } catch (err) {
+                console.error(err);
+                setError('Failed to update date');
+            } finally {
+                setIsUpdatingDate(false);
+            }
+        },
+        [selectedMedia, store, COLUMNS, totalCount, loadRange]
+    );
     // Check what needs loading
     const checkAndLoad = useCallback(
         (startRow: number, endRow: number) => {
@@ -606,6 +687,7 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
     // Range change handler - no state updates during scroll
     const handleRangeChanged = useCallback(
         (range: { startIndex: number; endIndex: number }) => {
+            lastVisibleRangeRef.current = { startRow: range.startIndex, endRow: range.endIndex };
             // Schedule loading outside of scroll handler
             requestAnimationFrame(() => {
                 checkAndLoad(range.startIndex, range.endIndex);
@@ -885,12 +967,30 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                                     <p className="text-lg font-medium">{selectedMedia.title}</p>
                                 )}
                                 {(selectedMedia.date || selectedMedia.uploaded_at) && (
-                                    <p className="text-sm text-slate-200">
-                                        {selectedMedia.date
-                                            ? new Date(selectedMedia.date).toLocaleString()
-                                            : new Date(selectedMedia.uploaded_at).toLocaleString()}
-                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => openDatePicker(e)}
+                                        disabled={isUpdatingDate}
+                                        className="text-sm text-slate-200 underline decoration-dotted hover:text-white disabled:opacity-70"
+                                    >
+                                        {isUpdatingDate
+                                            ? 'Updating date...'
+                                            : selectedMedia.date
+                                                ? new Date(selectedMedia.date).toLocaleString()
+                                                : new Date(selectedMedia.uploaded_at).toLocaleString()}
+                                    </button>
                                 )}
+                                <input
+                                    ref={dateInputRef}
+                                    type="datetime-local"
+                                    className="sr-only"
+                                    onClick={(e) => e.stopPropagation()}
+                                    onChange={(e) => {
+                                        e.stopPropagation();
+                                        if (!e.target.value) return;
+                                        void handleDateChange(e.target.value);
+                                    }}
+                                />
                             </div>
                         )}
                     </div>
