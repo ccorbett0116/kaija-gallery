@@ -85,28 +85,28 @@ jobs:
 
       - name: Create deployment directory
         run: |
-          mkdir -p ~/gallery-deploy
-          cp docker-compose.yml ~/gallery-deploy/
+          mkdir -p $HOME/gallery-deploy
+          cp docker-compose.yml $HOME/gallery-deploy/
 
       - name: Create .env file with secrets
         run: |
-          cat > ~/gallery-deploy/.env << EOF
+          cat > $HOME/gallery-deploy/.env << EOF
           CLOUDFLARE_TUNNEL_TOKEN=${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
           EOF
 
       - name: Pull latest images
-        working-directory: ~/gallery-deploy
         run: |
+          cd $HOME/gallery-deploy
           docker compose pull
 
       - name: Deploy with docker-compose
-        working-directory: ~/gallery-deploy
         run: |
+          cd $HOME/gallery-deploy
           docker compose up -d --remove-orphans
 
       - name: Verify deployment
-        working-directory: ~/gallery-deploy
         run: |
+          cd $HOME/gallery-deploy
           echo "Waiting for containers to start..."
           sleep 5
 
