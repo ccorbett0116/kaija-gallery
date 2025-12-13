@@ -124,8 +124,8 @@ jobs:
           docker ps --filter "name=${CONTAINER_NAME}" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
 
           if docker ps --filter "name=${CONTAINER_NAME}" --format '{{.Names}}' | grep -q "${CONTAINER_NAME}"; then
-            echo "✅ Deployment successful!"
+            echo "Deployment successful!"
           else
-            echo "❌ Deployment failed - container not running"
+            echo "Deployment failed - container not running"
             exit 1
           fi
