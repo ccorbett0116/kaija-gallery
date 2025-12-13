@@ -1,4 +1,28 @@
-FROM ubuntu:latest
-LABEL authors="WhizKid2004"
+FROM node:20-alpine AS base
+WORKDIR /app
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
 
-ENTRYPOINT ["top", "-b"]
+FROM base AS deps
+RUN apk add --no-cache ffmpeg python3 make g++ libc6-compat
+COPY package*.json ./
+RUN npm ci
+
+# Build the Next.js app
+FROM deps AS builder
+COPY . .
+RUN npm run build
+
+# Runtime image
+FROM base AS runner
+RUN apk add --no-cache ffmpeg libc6-compat
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/next.config.ts ./next.config.ts
+COPY --from=builder /app/package.json ./package.json
+RUN mkdir -p data
+
+EXPOSE 3000
+CMD ["npm", "start"]

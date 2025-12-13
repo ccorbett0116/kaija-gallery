@@ -28,6 +28,7 @@ export default function DateModal({ title, date, onClose }: Props) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [selectedMedia, setSelectedMedia] = useState<MediaEntry | null>(null);
+    const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null);
     const [mediaDimensions, setMediaDimensions] = useState<{ width: number; height: number } | null>(null);
 
     useEffect(() => {
@@ -101,8 +102,26 @@ export default function DateModal({ title, date, onClose }: Props) {
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to delete');
             setDeleting(false);
-            setShowDeleteConfirm(false);
+                setShowDeleteConfirm(false);
         }
+    };
+
+    const handleMediaSelect = (media: MediaEntry, index: number) => {
+        setSelectedMedia(media);
+        setSelectedMediaIndex(index);
+        setMediaDimensions(null);
+    };
+
+    const handleNavigate = (direction: 'prev' | 'next') => {
+        if (!dateEntry || selectedMediaIndex === null) return;
+        const delta = direction === 'next' ? 1 : -1;
+        const nextIndex = selectedMediaIndex + delta;
+        if (nextIndex < 0 || nextIndex >= dateEntry.media.length) return;
+
+        const nextMedia = dateEntry.media[nextIndex];
+        setSelectedMedia(nextMedia);
+        setSelectedMediaIndex(nextIndex);
+        setMediaDimensions(null);
     };
 
     // Calculate proper dimensions for rotated media
@@ -241,10 +260,10 @@ export default function DateModal({ title, date, onClose }: Props) {
                                 <div className="mt-6">
                                     <h3 className="text-lg font-medium mb-3">Media</h3>
                                     <div className="grid grid-cols-2 gap-3">
-                                        {dateEntry.media.map((item) => (
+                                        {dateEntry.media.map((item, index) => (
                                             <button
                                                 key={item.media_id}
-                                                onClick={() => setSelectedMedia(item)}
+                                                onClick={() => handleMediaSelect(item, index)}
                                                 className="relative aspect-square rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-800 hover:opacity-90 transition-opacity cursor-pointer"
                                             >
                                                 {item.media_type === 'image' && item.file_path_thumb && (
@@ -330,6 +349,8 @@ export default function DateModal({ title, date, onClose }: Props) {
                     onClick={(e) => {
                         e.stopPropagation();
                         setSelectedMedia(null);
+                        setSelectedMediaIndex(null);
+                        setMediaDimensions(null);
                     }}
                 >
                     <div
@@ -339,6 +360,7 @@ export default function DateModal({ title, date, onClose }: Props) {
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedMedia(null);
+                                setSelectedMediaIndex(null);
                                 setMediaDimensions(null);
                             }}
                             className="self-end text-white hover:text-slate-300 text-3xl leading-none cursor-pointer bg-black/50 rounded-full w-10 h-10 flex items-center justify-center"
@@ -347,53 +369,113 @@ export default function DateModal({ title, date, onClose }: Props) {
                             &times;
                         </button>
 
-                        <div
-                            className="flex items-center justify-center"
-                            style={getDisplayDimensions().container}
-                        >
-                            {selectedMedia.media_type === 'image' ? (
-                                <img
-                                    src={`/api/media/${selectedMedia.file_path_display}`}
-                                    alt=""
-                                    className="block"
-                                    onLoad={(e) => {
-                                        const img = e.currentTarget;
-                                        setMediaDimensions({
-                                            width: img.naturalWidth,
-                                            height: img.naturalHeight,
-                                        });
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    style={{
-                                        ...getDisplayDimensions().media,
-                                        objectFit: 'contain',
-                                        transform: `rotate(${selectedMedia.rotation ?? 0}deg)`,
-                                        transformOrigin: 'center center',
-                                    }}
-                                />
-                            ) : (
-                                <video
-                                    controls
-                                    autoPlay
-                                    className="block"
-                                    src={`/api/media/${selectedMedia.file_path_display}`}
-                                    onLoadedMetadata={(e) => {
-                                        const video = e.currentTarget;
-                                        setMediaDimensions({
-                                            width: video.videoWidth,
-                                            height: video.videoHeight,
-                                        });
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    style={{
-                                        ...getDisplayDimensions().media,
-                                        objectFit: 'contain',
-                                        transform: `rotate(${selectedMedia.rotation ?? 0}deg)`,
-                                        transformOrigin: 'center center',
-                                    }}
-                                />
-                            )}
-                        </div>
+                        {(() => {
+                            const display = getDisplayDimensions();
+                            const navHeight =
+                                display.media?.maxHeight ||
+                                display.container.height ||
+                                display.container.maxHeight;
+                            const isFirst = selectedMediaIndex === 0;
+                            const isLast = dateEntry ? selectedMediaIndex === dateEntry.media.length - 1 : false;
+
+                            return (
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleNavigate('prev');
+                                        }}
+                                        disabled={isFirst}
+                                        className="text-white bg-black/50 hover:bg-black/70 disabled:opacity-40 disabled:cursor-not-allowed rounded-md px-3"
+                                        style={{ height: navHeight }}
+                                        aria-label="Previous media"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-6 w-6"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                    </button>
+
+                                    <div
+                                        className="flex items-center justify-center"
+                                        style={display.container}
+                                    >
+                                        {selectedMedia.media_type === 'image' ? (
+                                            <img
+                                                src={`/api/media/${selectedMedia.file_path_display}`}
+                                                alt=""
+                                                className="block"
+                                                onLoad={(e) => {
+                                                    const img = e.currentTarget;
+                                                    setMediaDimensions({
+                                                        width: img.naturalWidth,
+                                                        height: img.naturalHeight,
+                                                    });
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                style={{
+                                                    ...display.media,
+                                                    objectFit: 'contain',
+                                                    transform: `rotate(${selectedMedia.rotation ?? 0}deg)`,
+                                                    transformOrigin: 'center center',
+                                                }}
+                                            />
+                                        ) : (
+                                            <video
+                                                controls
+                                                autoPlay
+                                                className="block"
+                                                src={`/api/media/${selectedMedia.file_path_display}`}
+                                                onLoadedMetadata={(e) => {
+                                                    const video = e.currentTarget;
+                                                    setMediaDimensions({
+                                                        width: video.videoWidth,
+                                                        height: video.videoHeight,
+                                                    });
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                style={{
+                                                    ...display.media,
+                                                    objectFit: 'contain',
+                                                    transform: `rotate(${selectedMedia.rotation ?? 0}deg)`,
+                                                    transformOrigin: 'center center',
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleNavigate('next');
+                                        }}
+                                        disabled={isLast}
+                                        className="text-white bg-black/50 hover:bg-black/70 disabled:opacity-40 disabled:cursor-not-allowed rounded-md px-3"
+                                        style={{ height: navHeight }}
+                                        aria-label="Next media"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-6 w-6"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             )}

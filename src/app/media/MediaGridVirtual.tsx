@@ -148,7 +148,7 @@ const MediaItem = memo(function MediaItem({
                                           }: {
     store: ItemStore;
     globalIndex: number;
-    onSelect: (item: MediaEntry) => void;
+    onSelect: (item: MediaEntry, index: number) => void;
 }) {
     const item = useItem(store, globalIndex);
 
@@ -164,7 +164,7 @@ const MediaItem = memo(function MediaItem({
 
     return (
         <button
-            onClick={() => onSelect(item)}
+            onClick={() => onSelect(item, globalIndex)}
             className="relative rounded-md overflow-hidden group cursor-pointer hover:opacity-90 transition-opacity w-full h-full"
         >
             {item.media_type === 'image' ? (
@@ -254,7 +254,7 @@ const MediaRow = memo(function MediaRow({
     columns: number;
     itemHeight: number;
     rowGap: number;
-    onSelect: (item: MediaEntry) => void;
+    onSelect: (item: MediaEntry, index: number) => void;
 }) {
     const startIndex = rowIndex * columns;
 
@@ -295,6 +295,7 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
 
     const [totalCount, setTotalCount] = useState(initialTotal);
     const [selectedMedia, setSelectedMedia] = useState<MediaEntry | null>(null);
+    const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [isPending, startTransition] = useTransition();
     const [isUpdatingDate, setIsUpdatingDate] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -562,10 +563,33 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
     }, [store]);
 
     // Stable select handler
-    const handleSelect = useCallback((item: MediaEntry) => {
+    const handleSelect = useCallback((item: MediaEntry, index: number) => {
         setSelectedMedia(item);
+        setSelectedIndex(index);
         setImageDimensions(null); // Reset dimensions when selecting new media
     }, []);
+
+    const getMediaAtIndex = useCallback(async (index: number) => {
+        let media = getItem(store, index);
+        if (media) return media;
+
+        await loadRange(index, index);
+        return getItem(store, index);
+    }, [store, loadRange]);
+
+    const handleNavigate = useCallback(async (direction: 'prev' | 'next') => {
+        if (selectedIndex === null) return;
+        const delta = direction === 'next' ? 1 : -1;
+        const nextIndex = selectedIndex + delta;
+        if (nextIndex < 0 || nextIndex >= totalCount) return;
+
+        const nextMedia = await getMediaAtIndex(nextIndex);
+        if (nextMedia) {
+            setSelectedMedia(nextMedia);
+            setSelectedIndex(nextIndex);
+            setImageDimensions(null);
+        }
+    }, [selectedIndex, totalCount, getMediaAtIndex]);
 
     // Calculate proper dimensions for rotated images
     const getDisplayDimensions = useCallback(() => {
@@ -660,6 +684,7 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                 // Update total count from store (deleteItem already decremented it)
                 setTotalCount(store.totalCount);
                 setSelectedMedia(null);
+                setSelectedIndex(null);
                 router.refresh();
             } else {
                 setError(result.error || 'Failed to delete media');
@@ -792,7 +817,11 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
             {selectedMedia && (
                 <div
                     className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
-                    onClick={() => setSelectedMedia(null)}
+                    onClick={() => {
+                        setSelectedMedia(null);
+                        setSelectedIndex(null);
+                        setImageDimensions(null);
+                    }}
                 >
                     {/* DELETE CONFIRM OVERLAY */}
                     {showDeleteConfirm && (
@@ -868,6 +897,8 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedMedia(null);
+                                setSelectedIndex(null);
+                                setImageDimensions(null);
                             }}
                             className="self-end text-white hover:text-slate-300 text-3xl leading-none cursor-pointer bg-black/50 rounded-full w-10 h-10 flex items-center justify-center"
                             aria-label="Close"
@@ -876,53 +907,114 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                         </button>
 
                         {/* Media container with proper size constraints */}
-                        <div
-                            className="flex items-center justify-center"
-                            style={getDisplayDimensions().container}
-                        >
-                            {selectedMedia.media_type === 'image' ? (
-                                <img
-                                    src={`/api/media/${selectedMedia.file_path_display}`}
-                                    alt=""
-                                    className="block"
-                                    onLoad={(e) => {
-                                        const img = e.currentTarget;
-                                        setImageDimensions({
-                                            width: img.naturalWidth,
-                                            height: img.naturalHeight,
-                                        });
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    style={{
-                                        ...getDisplayDimensions().image,
-                                        objectFit: 'contain',
-                                        transform: `rotate(${selectedMedia.rotation ?? 0}deg)`,
-                                        transformOrigin: 'center center',
-                                    }}
-                                />
-                            ) : (
-                                <video
-                                    controls
-                                    autoPlay
-                                    className="block"
-                                    src={`/api/media/${selectedMedia.file_path_display}`}
-                                    onLoadedMetadata={(e) => {
-                                        const video = e.currentTarget;
-                                        setImageDimensions({
-                                            width: video.videoWidth,
-                                            height: video.videoHeight,
-                                        });
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                    style={{
-                                        ...getDisplayDimensions().image,
-                                        objectFit: 'contain',
-                                        transform: `rotate(${selectedMedia.rotation ?? 0}deg)`,
-                                        transformOrigin: 'center center',
-                                    }}
-                                />
-                            )}
-                        </div>
+                        {(() => {
+                            const display = getDisplayDimensions();
+                            const navHeight =
+                                display.image?.maxHeight ||
+                                display.container.height ||
+                                display.container.maxHeight ||
+                                display.image?.height;
+                            const isFirst = selectedIndex === 0;
+                            const isLast = selectedIndex !== null ? selectedIndex === totalCount - 1 : false;
+
+                            return (
+                                <div className="flex items-center gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            void handleNavigate('prev');
+                                        }}
+                                        disabled={isFirst}
+                                        className="text-white bg-black/50 hover:bg-black/70 disabled:opacity-40 disabled:cursor-not-allowed rounded-md px-3"
+                                        style={{ height: navHeight }}
+                                        aria-label="Previous media"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-6 w-6"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                    </button>
+
+                                    <div
+                                        className="flex items-center justify-center"
+                                        style={display.container}
+                                    >
+                                        {selectedMedia.media_type === 'image' ? (
+                                            <img
+                                                src={`/api/media/${selectedMedia.file_path_display}`}
+                                                alt=""
+                                                className="block"
+                                                onLoad={(e) => {
+                                                    const img = e.currentTarget;
+                                                    setImageDimensions({
+                                                        width: img.naturalWidth,
+                                                        height: img.naturalHeight,
+                                                    });
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                style={{
+                                                    ...display.image,
+                                                    objectFit: 'contain',
+                                                    transform: `rotate(${selectedMedia.rotation ?? 0}deg)`,
+                                                    transformOrigin: 'center center',
+                                                }}
+                                            />
+                                        ) : (
+                                            <video
+                                                controls
+                                                autoPlay
+                                                className="block"
+                                                src={`/api/media/${selectedMedia.file_path_display}`}
+                                                onLoadedMetadata={(e) => {
+                                                    const video = e.currentTarget;
+                                                    setImageDimensions({
+                                                        width: video.videoWidth,
+                                                        height: video.videoHeight,
+                                                    });
+                                                }}
+                                                onClick={(e) => e.stopPropagation()}
+                                                style={{
+                                                    ...display.image,
+                                                    objectFit: 'contain',
+                                                    transform: `rotate(${selectedMedia.rotation ?? 0}deg)`,
+                                                    transformOrigin: 'center center',
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            void handleNavigate('next');
+                                        }}
+                                        disabled={isLast}
+                                        className="text-white bg-black/50 hover:bg-black/70 disabled:opacity-40 disabled:cursor-not-allowed rounded-md px-3"
+                                        style={{ height: navHeight }}
+                                        aria-label="Next media"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-6 w-6"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            );
+                        })()}
 
                         {/* Control buttons */}
                         <div className="flex gap-2">
