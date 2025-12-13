@@ -1,7 +1,7 @@
 services:
   app:
     image: ghcr.io/ccorbett0116/kaija-gallery:latest
-    container_name: gallery-app
+    container_name: kaija-gallery
     env_file:
       - .env
     volumes:
