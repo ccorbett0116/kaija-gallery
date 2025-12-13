@@ -1,5 +1,3 @@
-left/right buttons sometimes too tall/small on rotated media
-controls are on side rather than bottom when a player is rotated
 left button shouldnt appear on first media
 right button shouldn't appear on last media
 Dropdown shouldnt find fields already used in dateEdit Date page light mode

@@ -910,11 +910,7 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                         {/* Media container with proper size constraints */}
                         {(() => {
                             const display = getDisplayDimensions();
-                            const navHeight =
-                                display.image?.maxHeight ||
-                                display.container.height ||
-                                display.container.maxHeight ||
-                                display.image?.height;
+                            const navHeight = display.container.height || display.container.maxHeight;
                             const isFirst = selectedIndex === 0;
                             const isLast = selectedIndex !== null ? selectedIndex === totalCount - 1 : false;
 
