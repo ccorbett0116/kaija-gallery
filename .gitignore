@@ -39,8 +39,7 @@ dist/
 data/
 System Prompt.md
 .claude/
-runner/
-/CLOUDFLARE_TUNNEL_SETUP.md
+runner/.env.runner
 
 ###################################
 # Logs
