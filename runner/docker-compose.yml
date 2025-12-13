@@ -1,0 +1,51 @@
+services:
+  kaija-runner:
+    image: ghcr.io/actions/actions-runner:latest
+    container_name: kaija-runner
+    user: "0:0" # run as root to avoid permission issues on mounted work volume
+    restart: unless-stopped
+    env_file:
+      - .env.runner
+    environment:
+      RUNNER_SCOPE: "repo"
+      RUNNER_GROUP: "Default"
+      EPHEMERAL: "false"
+      RUNNER_ALLOW_RUNASROOT: "1"
+      DOCKER_CONFIG: "/root/.docker"
+    command: >
+      bash -c "
+      echo 'Installing Docker Compose...' &&
+      curl -SL https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose &&
+      chmod +x /usr/local/bin/docker-compose &&
+      ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose &&
+      docker-compose version &&
+      echo 'Docker Compose installed successfully' &&
+      cd /home/runner &&
+      if [ ! -f .runner ]; then
+        echo 'Runner not configured. Generating registration token...' &&
+        REPO_OWNER=\$$(echo $$RUNNER_REPOSITORY_URL | sed 's|https://github.com/||' | cut -d'/' -f1) &&
+        REPO_NAME=\$$(echo $$RUNNER_REPOSITORY_URL | sed 's|https://github.com/||' | cut -d'/' -f2) &&
+        API_RESPONSE=\$$(curl -s -X POST -H 'Accept: application/vnd.github+json' -H \"Authorization: Bearer $$GITHUB_PAT\" -H 'X-GitHub-Api-Version: 2022-11-28' https://api.github.com/repos/\$$REPO_OWNER/\$$REPO_NAME/actions/runners/registration-token) &&
+        RUNNER_TOKEN=\$$(echo \$$API_RESPONSE | grep '\"token\"' | cut -d'\"' -f4) &&
+        if [ -z \"\$$RUNNER_TOKEN\" ]; then echo 'ERROR: Failed to generate token' && exit 1; fi &&
+        echo 'Configuring runner...' &&
+        ./config.sh --url $$RUNNER_REPOSITORY_URL --token \$$RUNNER_TOKEN --name $$RUNNER_NAME --labels $$RUNNER_LABELS --unattended --replace &&
+        echo 'Runner configured successfully';
+      else
+        echo 'Runner already configured, skipping configuration...';
+      fi &&
+      echo 'Starting runner...' &&
+      ./run.sh"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - kaija-runner-work:/home/runner/_work
+      - kaija-runner-bin:/usr/local/bin
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  kaija-runner-work:
+  kaija-runner-bin:

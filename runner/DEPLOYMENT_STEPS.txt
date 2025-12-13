@@ -1,0 +1,105 @@
+===============================================================================
+GitHub Actions Self-Hosted Runner - Quick Deploy Guide
+===============================================================================
+
+REQUIRED FILES
+-------------------------------------------------------------------------------
+runner/
+├── docker-compose.yml     # Runner container configuration
+└── .env.runner           # Environment variables (includes PAT)
+
+===============================================================================
+DEPLOYMENT STEPS
+===============================================================================
+
+STEP 1: Create Directory Structure
+-------------------------------------------------------------------------------
+On your server:
+  mkdir -p ~/runner
+  cd ~/runner
+
+STEP 2: Copy Files to Server
+-------------------------------------------------------------------------------
+Copy both files to ~/runner/ on your server:
+  - docker-compose.yml
+  - .env.runner (with PAT configured)
+
+STEP 3: Configure .env.runner
+-------------------------------------------------------------------------------
+Edit ~/runner/.env.runner with these values:
+
+  RUNNER_REPOSITORY_URL=https://github.com/#######/#######
+  RUNNER_NAME=#######
+  RUNNER_LABELS=self-hosted,docker,linux
+  GITHUB_PAT=#######
+  DOCKER_GROUP_ID=#######
+
+Note: DOCKER_GROUP_ID is optional (defaults to 999)
+
+To get your server's Docker group ID:
+  getent group docker | cut -d: -f3
+
+STEP 4: Start the Runner
+-------------------------------------------------------------------------------
+  cd ~/runner
+  docker compose up -d
+
+On first start, the runner will automatically:
+  Install Docker Compose v2.24.5 inside the container
+  Generate a fresh registration token using your PAT
+  Register with GitHub
+  Start listening for jobs
+
+STEP 5: Verify Deployment
+-------------------------------------------------------------------------------
+Check container status:
+  docker compose ps
+
+Expected output:
+  NAME           STATUS
+  #######   Up X seconds
+
+Check logs:
+  docker compose logs -f #######
+
+Look for these messages:
+  "Docker Compose installed successfully"
+  "Connected to GitHub"
+  "Listening for Jobs"
+
+Check GitHub:
+  https://github.com/your-org/your-repo/settings/actions/runners
+
+Expected: Runner shows with green "Idle" status
+
+===============================================================================
+USEFUL COMMANDS
+===============================================================================
+
+Start runner:
+  docker compose up -d
+
+Stop runner:
+  docker compose down
+
+Restart runner:
+  docker compose restart
+
+View logs:
+  docker compose logs -f #######
+
+Update runner image:
+  docker compose pull
+  docker compose up -d
+
+Check status:
+  docker compose ps
+
+===============================================================================
+SECURITY NOTES
+===============================================================================
+
+Runner runs as non-root user (runner:1001)
+Only has Docker group access (not full root)
+PAT can be set to expire if desired
+Ephemeral mode disabled (runner persists between jobs)
