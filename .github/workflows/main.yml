@@ -97,12 +97,12 @@ jobs:
       - name: Pull latest images
         run: |
           cd $HOME/gallery-deploy
-          docker compose pull
+          docker-compose pull
 
       - name: Deploy with docker-compose
         run: |
           cd $HOME/gallery-deploy
-          docker compose up -d --remove-orphans
+          docker-compose up -d --remove-orphans
 
       - name: Verify deployment
         run: |
@@ -111,19 +111,19 @@ jobs:
           sleep 5
 
           echo "Container status:"
-          docker compose ps
+          docker-compose ps
 
-          if docker compose ps | grep -q "gallery-app.*Up"; then
+          if docker-compose ps | grep -q "kaija-gallery.*Up"; then
             echo "App deployment successful!"
           else
             echo "App deployment failed - container not running"
-            docker compose logs
+            docker-compose logs
             exit 1
           fi
 
-          if docker compose ps | grep -q "gallery-tunnel.*Up"; then
+          if docker-compose ps | grep -q "kaija-gallery-tunnel.*Up"; then
             echo "Cloudflare tunnel connected!"
           else
             echo "Warning: Cloudflare tunnel not running"
-            docker compose logs cloudflared
+            docker-compose logs cloudflared
           fi
