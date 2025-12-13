@@ -12,7 +12,7 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: gallery-tunnel
+    container_name: kaija-gallery-tunnel
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     environment:
