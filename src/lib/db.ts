@@ -4,19 +4,31 @@ import fs from 'fs';
 import path from 'path';
 
 const defaultPath = path.join(process.cwd(), 'data', 'gallery.sqlite');
-const dbPath = process.env.DB_PATH || defaultPath;
 
-// Ensure directory exists
-const dir = path.dirname(dbPath);
-if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+// During Next build we can get parallel workers reading the same file; use an
+// isolated in-memory DB to avoid SQLITE_BUSY during module evaluation.
+const isBuild = process.env.NEXT_PHASE === 'phase-production-build' || process.env.SKIP_DB_SETUP === '1';
+const dbPath = isBuild ? process.env.BUILD_DB_PATH || ':memory:' : process.env.DB_PATH || defaultPath;
+const isMemoryDb = dbPath === ':memory:';
+
+// Ensure directory exists (skip for in-memory)
+if (!isMemoryDb) {
+    const dir = path.dirname(dbPath);
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
 }
 
 // Single shared connection
-const db = new Database(dbPath);
+// Increase busy timeout to reduce SQLITE_BUSY errors when multiple workers touch the DB (e.g. during build)
+const db = new Database(dbPath, { timeout: 10000 });
+db.pragma('busy_timeout = 10000');
 
 // Pragmas tuned for Pi-friendly SQLite later as well
-db.pragma('journal_mode = WAL');
+// WAL is only valid for file-backed databases
+if (!isMemoryDb) {
+    db.pragma('journal_mode = WAL');
+}
 db.pragma('foreign_keys = ON');
 
 // Schema: matches system prompt

@@ -438,14 +438,15 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ mediaId: selectedMedia.media_id, date: isoDate }),
                 });
-                const data = (await res.json()) as { date?: string; error?: string };
+                const data = (await res.json()) as { date?: string | null; error?: string };
 
-                if (!res.ok || !data.date) {
+                const updatedDate = data.date ?? null;
+                if (!res.ok || !updatedDate) {
                     throw new Error(data.error || 'Failed to update date');
                 }
 
-                setSelectedMedia((prev) => (prev ? { ...prev, date: data.date } : prev));
-                updateMediaDate(store, selectedMedia.media_id, data.date);
+                setSelectedMedia((prev) => (prev ? { ...prev, date: updatedDate } : prev));
+                updateMediaDate(store, selectedMedia.media_id, updatedDate);
 
                 // Reload currently visible range to reflect updated ordering
                 const { startRow, endRow } = lastVisibleRangeRef.current;
