@@ -91,6 +91,10 @@ jobs:
       - name: Create .env file with secrets
         run: |
           cat > $HOME/gallery-deploy/.env << EOF
+          SHARED_PASSWORD=${{ secrets.SHARED_PASSWORD }}
+          SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+          DB_PATH=${{ secrets.DB_PATH }}
+          GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
           CLOUDFLARE_TUNNEL_TOKEN=${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
           EOF
 
