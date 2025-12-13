@@ -1,10 +1,27 @@
 services:
   app:
     image: ghcr.io/ccorbett0116/kaija-gallery:latest
-    ports:
-      - "3000:3000"
+    container_name: gallery-app
     env_file:
       - .env
     volumes:
       - ./data:/app/data
     restart: unless-stopped
+    networks:
+      - gallery-network
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: gallery-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - gallery-network
+    depends_on:
+      - app
+
+networks:
+  gallery-network:
+    driver: bridge
