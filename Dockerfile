@@ -1,6 +1,5 @@
 FROM node:20-alpine AS base
 WORKDIR /app
-ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=3000
 
@@ -9,15 +8,22 @@ RUN apk add --no-cache ffmpeg python3 make g++ libc6-compat
 COPY package*.json ./
 RUN npm ci
 
-# Build the Next.js app
+# Build the Next.js app (needs dev deps)
 FROM deps AS builder
 COPY . .
 RUN npm run build
 
+# Install only production deps for the runtime image
+FROM base AS prod-deps
+RUN apk add --no-cache ffmpeg python3 make g++ libc6-compat
+COPY package*.json ./
+RUN npm ci --omit=dev
+
 # Runtime image
 FROM base AS runner
+ENV NODE_ENV=production
 RUN apk add --no-cache ffmpeg libc6-compat
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.ts ./next.config.ts
