@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { DateEntryWithFields } from '@/lib/dates';
 import type { MediaEntry } from '@/lib/media';
@@ -10,6 +10,14 @@ type Props = {
     date: string;
     onClose: () => void;
 };
+
+// Helper function for video time formatting
+function formatTime(seconds: number): string {
+    if (!isFinite(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
 
 const formatDisplayDate = (isoDate: string) =>
     // Use noon UTC to avoid local timezone shifting the day
@@ -22,6 +30,8 @@ const formatDisplayDate = (isoDate: string) =>
 
 export default function DateModal({ title, date, onClose }: Props) {
     const router = useRouter();
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+
     const [dateEntry, setDateEntry] = useState<DateEntryWithFields | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -30,6 +40,13 @@ export default function DateModal({ title, date, onClose }: Props) {
     const [selectedMedia, setSelectedMedia] = useState<MediaEntry | null>(null);
     const [selectedMediaIndex, setSelectedMediaIndex] = useState<number | null>(null);
     const [mediaDimensions, setMediaDimensions] = useState<{ width: number; height: number } | null>(null);
+
+    // Video controls state
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const [volume, setVolume] = useState(1);
+    const [isMuted, setIsMuted] = useState(false);
 
     useEffect(() => {
         async function fetchDate() {
@@ -124,23 +141,90 @@ export default function DateModal({ title, date, onClose }: Props) {
         setMediaDimensions(null);
     };
 
+    // Video control handlers
+    const togglePlayPause = useCallback(() => {
+        if (!videoRef.current) return;
+        if (isPlaying) {
+            videoRef.current.pause();
+        } else {
+            void videoRef.current.play();
+        }
+        setIsPlaying(!isPlaying);
+    }, [isPlaying]);
+
+    const handleSeek = useCallback((time: number) => {
+        if (!videoRef.current) return;
+        videoRef.current.currentTime = time;
+        setCurrentTime(time);
+    }, []);
+
+    const handleVolumeChange = useCallback((newVolume: number) => {
+        if (!videoRef.current) return;
+        videoRef.current.volume = newVolume;
+        setVolume(newVolume);
+        if (newVolume === 0) {
+            setIsMuted(true);
+        } else if (isMuted) {
+            setIsMuted(false);
+        }
+    }, [isMuted]);
+
+    const toggleMute = useCallback(() => {
+        if (!videoRef.current) return;
+        videoRef.current.muted = !isMuted;
+        setIsMuted(!isMuted);
+    }, [isMuted]);
+
+    const toggleFullscreen = useCallback(() => {
+        if (!videoRef.current) return;
+        if (!document.fullscreenElement) {
+            void videoRef.current.requestFullscreen();
+        } else {
+            void document.exitFullscreen();
+        }
+    }, []);
+
+    // Reset video state when media changes (but not on rotation change)
+    const prevMediaIdRef = useRef<number | null>(null);
+    useEffect(() => {
+        const currentMediaId = selectedMedia?.media_id ?? null;
+        if (currentMediaId !== prevMediaIdRef.current) {
+            setIsPlaying(false);
+            setCurrentTime(0);
+            setDuration(0);
+            prevMediaIdRef.current = currentMediaId;
+        }
+    }, [selectedMedia]);
+
     // Calculate proper dimensions for rotated media
     const getDisplayDimensions = () => {
         if (!selectedMedia || !mediaDimensions) return {
-            container: { maxWidth: '95vw', maxHeight: '85vh' },
-            media: {}
+            container: { maxWidth: '90vw', maxHeight: '50vh' },
+            media: { width: '100%', height: '100%' }
         };
 
         const rotation = (selectedMedia.rotation ?? 0) % 360;
         const isRotated = rotation === 90 || rotation === 270 || rotation === -90 || rotation === -270;
 
-        const maxWidth = window.innerWidth * 0.95;
-        const maxHeight = window.innerHeight * 0.85;
+        // Calculate available space accounting for UI elements
+        // Close button (~40px) + gaps (~16px) + custom controls (~100px for video) + extra padding (~50px)
+        // No rotate/delete/date controls in DateModal
+        const uiReservedHeight = selectedMedia.media_type === 'video' ? 220 : 120;
+
+        // Account for navigation arrows + gaps on both sides
+        // Each arrow is ~24-48px + padding, with gaps of 4-12px
+        // Total: ~100-150px depending on screen size
+        const arrowsWidth = window.innerWidth < 640 ? 80 : window.innerWidth < 768 ? 100 : 120;
+
+        const maxWidth = window.innerWidth - arrowsWidth;
+        const maxHeight = Math.max(window.innerHeight - uiReservedHeight, 200);
 
         const { width, height } = mediaDimensions;
 
+        // Calculate what size the rotated bounds will be
         let rotatedWidth, rotatedHeight;
         if (isRotated) {
+            // After rotation, the bounding box dimensions swap
             rotatedWidth = height;
             rotatedHeight = width;
         } else {
@@ -148,15 +232,19 @@ export default function DateModal({ title, date, onClose }: Props) {
             rotatedHeight = height;
         }
 
+        // Calculate scale to fit the ROTATED bounds into available space
         const scaleX = maxWidth / rotatedWidth;
         const scaleY = maxHeight / rotatedHeight;
-        const scale = Math.min(scaleX, scaleY, 1);
+        const scale = Math.min(scaleX, scaleY, 1); // Don't scale up
 
+        // Container size needs to accommodate the rotated image
         const containerWidth = rotatedWidth * scale;
         const containerHeight = rotatedHeight * scale;
 
+        // Image dimensions need to be swapped when rotated
         let mediaWidth, mediaHeight;
         if (isRotated) {
+            // Image needs opposite dimensions to fill container after rotation
             mediaWidth = containerHeight;
             mediaHeight = containerWidth;
         } else {
@@ -354,7 +442,7 @@ export default function DateModal({ title, date, onClose }: Props) {
                     }}
                 >
                     <div
-                        className="relative flex flex-col items-center gap-4 max-w-full max-h-full"
+                        className="relative flex flex-col items-center gap-1 sm:gap-2 md:gap-4 max-w-full max-h-full"
                     >
                         <button
                             onClick={(e) => {
@@ -363,7 +451,7 @@ export default function DateModal({ title, date, onClose }: Props) {
                                 setSelectedMediaIndex(null);
                                 setMediaDimensions(null);
                             }}
-                            className="self-end text-white hover:text-slate-300 text-3xl leading-none cursor-pointer bg-black/50 rounded-full w-10 h-10 flex items-center justify-center"
+                            className="self-end text-white hover:text-slate-300 text-2xl sm:text-3xl leading-none cursor-pointer bg-black/50 rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center"
                             aria-label="Close"
                         >
                             &times;
@@ -371,15 +459,12 @@ export default function DateModal({ title, date, onClose }: Props) {
 
                         {(() => {
                             const display = getDisplayDimensions();
-                            const navHeight =
-                                display.media?.maxHeight ||
-                                display.container.height ||
-                                display.container.maxHeight;
+                            const navHeight = display.container.height || display.container.maxHeight;
                             const isFirst = selectedMediaIndex === 0;
                             const isLast = dateEntry ? selectedMediaIndex === dateEntry.media.length - 1 : false;
 
                             return (
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
                                     <button
                                         type="button"
                                         onClick={(e) => {
@@ -387,13 +472,13 @@ export default function DateModal({ title, date, onClose }: Props) {
                                             handleNavigate('prev');
                                         }}
                                         disabled={isFirst}
-                                        className="text-white bg-black/50 hover:bg-black/70 disabled:opacity-40 disabled:cursor-not-allowed rounded-md px-3"
+                                        className="text-white bg-black/50 hover:bg-black/70 disabled:opacity-40 disabled:cursor-not-allowed rounded-md px-1 sm:px-2 md:px-3"
                                         style={{ height: navHeight }}
                                         aria-label="Previous media"
                                     >
                                         <svg
                                             xmlns="http://www.w3.org/2000/svg"
-                                            className="h-6 w-6"
+                                            className="h-5 w-5 sm:h-6 sm:w-6"
                                             fill="none"
                                             viewBox="0 0 24 24"
                                             stroke="currentColor"
@@ -429,7 +514,8 @@ export default function DateModal({ title, date, onClose }: Props) {
                                             />
                                         ) : (
                                             <video
-                                                controls
+                                                ref={videoRef}
+                                                controls={false}
                                                 autoPlay
                                                 className="block"
                                                 src={`/api/media/${selectedMedia.file_path_display}`}
@@ -439,8 +525,17 @@ export default function DateModal({ title, date, onClose }: Props) {
                                                         width: video.videoWidth,
                                                         height: video.videoHeight,
                                                     });
+                                                    setDuration(video.duration);
                                                 }}
-                                                onClick={(e) => e.stopPropagation()}
+                                                onTimeUpdate={(e) => {
+                                                    setCurrentTime(e.currentTarget.currentTime);
+                                                }}
+                                                onPlay={() => setIsPlaying(true)}
+                                                onPause={() => setIsPlaying(false)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    togglePlayPause();
+                                                }}
                                                 style={{
                                                     ...display.media,
                                                     objectFit: 'contain',
@@ -458,13 +553,13 @@ export default function DateModal({ title, date, onClose }: Props) {
                                             handleNavigate('next');
                                         }}
                                         disabled={isLast}
-                                        className="text-white bg-black/50 hover:bg-black/70 disabled:opacity-40 disabled:cursor-not-allowed rounded-md px-3"
+                                        className="text-white bg-black/50 hover:bg-black/70 disabled:opacity-40 disabled:cursor-not-allowed rounded-md px-1 sm:px-2 md:px-3"
                                         style={{ height: navHeight }}
                                         aria-label="Next media"
                                     >
                                         <svg
                                             xmlns="http://www.w3.org/2000/svg"
-                                            className="h-6 w-6"
+                                            className="h-5 w-5 sm:h-6 sm:w-6"
                                             fill="none"
                                             viewBox="0 0 24 24"
                                             stroke="currentColor"
@@ -476,6 +571,88 @@ export default function DateModal({ title, date, onClose }: Props) {
                                 </div>
                             );
                         })()}
+
+                        {/* Custom video controls */}
+                        {selectedMedia.media_type === 'video' && (
+                            <div
+                                className="bg-black/80 rounded-lg p-2 sm:p-3 w-full max-w-2xl"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {/* Play/Pause and Time Display */}
+                                <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                                    <button
+                                        onClick={togglePlayPause}
+                                        className="text-white hover:text-slate-300 transition-colors"
+                                        aria-label={isPlaying ? 'Pause' : 'Play'}
+                                    >
+                                        {isPlaying ? (
+                                            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                            </svg>
+                                        )}
+                                    </button>
+
+                                    <div className="text-white text-xs sm:text-sm">
+                                        {formatTime(currentTime)} / {formatTime(duration)}
+                                    </div>
+                                </div>
+
+                                {/* Seek bar */}
+                                <div className="mb-1 sm:mb-2">
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max={duration || 0}
+                                        value={currentTime}
+                                        onChange={(e) => handleSeek(parseFloat(e.target.value))}
+                                        className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0"
+                                    />
+                                </div>
+
+                                {/* Volume and Fullscreen */}
+                                <div className="flex items-center gap-2 sm:gap-3">
+                                    <button
+                                        onClick={toggleMute}
+                                        className="text-white hover:text-slate-300 transition-colors"
+                                        aria-label={isMuted ? 'Unmute' : 'Mute'}
+                                    >
+                                        {isMuted || volume === 0 ? (
+                                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
+                                            </svg>
+                                        )}
+                                    </button>
+
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="1"
+                                        step="0.01"
+                                        value={isMuted ? 0 : volume}
+                                        onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                                        className="w-16 sm:w-24 h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0"
+                                    />
+
+                                    <button
+                                        onClick={toggleFullscreen}
+                                        className="text-white hover:text-slate-300 transition-colors ml-auto"
+                                        aria-label="Fullscreen"
+                                    >
+                                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l2.293 2.293a1 1 0 11-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 1a1 1 0 010-2h4a1 1 0 011 1v4a1 1 0 01-2 0V6.414l-2.293 2.293a1 1 0 11-1.414-1.414L13.586 5H12zm-9 7a1 1 0 012 0v1.586l2.293-2.293a1 1 0 111.414 1.414L6.414 15H8a1 1 0 010 2H4a1 1 0 01-1-1v-4zm13-1a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 010-2h1.586l-2.293-2.293a1 1 0 111.414-1.414L15 13.586V12a1 1 0 011-1z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
