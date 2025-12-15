@@ -998,28 +998,29 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
 
                             return (
                                 <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            void handleNavigate('prev');
-                                        }}
-                                        disabled={isFirst}
-                                        className="text-white bg-black/50 hover:bg-black/70 disabled:opacity-40 disabled:cursor-not-allowed rounded-md px-1 sm:px-2 md:px-3"
-                                        style={{ height: navHeight }}
-                                        aria-label="Previous media"
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            className="h-5 w-5 sm:h-6 sm:w-6"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
+                                    {!isFirst && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                void handleNavigate('prev');
+                                            }}
+                                            className="text-white bg-black/50 hover:bg-black/70 rounded-md px-1 sm:px-2 md:px-3"
+                                            style={{ height: navHeight }}
+                                            aria-label="Previous media"
                                         >
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                                        </svg>
-                                    </button>
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-5 w-5 sm:h-6 sm:w-6"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                            >
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                                            </svg>
+                                        </button>
+                                    )}
 
                                     <div
                                         className="flex items-center justify-center"
@@ -1079,28 +1080,29 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                                         )}
                                     </div>
 
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            void handleNavigate('next');
-                                        }}
-                                        disabled={isLast}
-                                        className="text-white bg-black/50 hover:bg-black/70 disabled:opacity-40 disabled:cursor-not-allowed rounded-md px-1 sm:px-2 md:px-3"
-                                        style={{ height: navHeight }}
-                                        aria-label="Next media"
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            className="h-5 w-5 sm:h-6 sm:w-6"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
+                                    {!isLast && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                void handleNavigate('next');
+                                            }}
+                                            className="text-white bg-black/50 hover:bg-black/70 rounded-md px-1 sm:px-2 md:px-3"
+                                            style={{ height: navHeight }}
+                                            aria-label="Next media"
                                         >
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </button>
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-5 w-5 sm:h-6 sm:w-6"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                strokeWidth="2"
+                                            >
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </button>
+                                    )}
                                 </div>
                             );
                         })()}
