@@ -312,6 +312,7 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
     const [isUpdatingDate, setIsUpdatingDate] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showJumpPicker, setShowJumpPicker] = useState(false);
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
     // Video controls state
@@ -428,6 +429,7 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
             const defaultValue = selectedMedia.date || selectedMedia.uploaded_at;
             const input = dateInputRef.current as HTMLInputElement & { showPicker?: () => void };
             input.value = formatDateForInput(defaultValue) || '';
+            setIsDatePickerOpen(true);
             if (typeof input.showPicker === 'function') {
                 input.showPicker();
             } else {
@@ -901,6 +903,10 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                 <div
                     className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
                     onClick={() => {
+                        if (isDatePickerOpen) {
+                            setIsDatePickerOpen(false);
+                            return;
+                        }
                         setSelectedMedia(null);
                         setSelectedIndex(null);
                         setImageDimensions(null);
@@ -1250,6 +1256,7 @@ export default function MediaGridVirtual({ initialTotal }: Props) {
                                     type="datetime-local"
                                     className="sr-only"
                                     onClick={(e) => e.stopPropagation()}
+                                    onBlur={() => setIsDatePickerOpen(false)}
                                     onChange={(e) => {
                                         e.stopPropagation();
                                         if (!e.target.value) return;
