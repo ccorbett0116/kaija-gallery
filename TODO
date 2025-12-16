@@ -1,3 +1,13 @@
+Occasional error in uploading (Request body exceeded 10MB for /media/upload. Only the first 10MB will be available unless configured. See https://nextjs.org/docs/app/api-reference/config/next-config-js/middlewareClientMaxBodySize for more details.
+                               Error: Unexpected end of form
+                                   at ignore-listed frames
+                                ⨯ uncaughtException:  Error: Unexpected end of form
+                                   at ignore-listed frames
+                                ⨯ Error: Unexpected end of form
+                                   at ignore-listed frames {
+                                 digest: '1917316682'
+                               })
+If video is already an mp4, dont transcode
 Dropdown shouldnt find fields already used in dateEdit Date page light mode
 Investigate jump to date functionality (should query for which media is most recent (date, then fallback to upload date) to that day (x), and jump to the highest multiple of num columns (y) s.t. y<x)
 Add jump to date on timeline

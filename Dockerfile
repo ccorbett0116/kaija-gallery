@@ -13,6 +13,7 @@ RUN set -eux; \
     apk add --no-cache \
       ffmpeg \
       libc6-compat \
+      libheif \
       python3 \
       make \
       g++
@@ -39,7 +40,8 @@ RUN set -eux; \
       g++; \
     apk add --no-cache \
       ffmpeg \
-      libc6-compat
+      libc6-compat \
+      libheif
 COPY package*.json ./
 RUN npm ci --omit=dev
 RUN apk del .build-deps
@@ -53,7 +55,7 @@ ENV NODE_ENV=production
 RUN set -eux; \
     ALPINE_V="$(cut -d. -f1,2 /etc/alpine-release)"; \
     echo "https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_V}/community" >> /etc/apk/repositories; \
-    apk add --no-cache ffmpeg libc6-compat
+    apk add --no-cache ffmpeg libc6-compat libheif
 
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next

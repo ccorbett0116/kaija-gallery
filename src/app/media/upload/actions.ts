@@ -31,7 +31,9 @@ export async function uploadMediaAction(formData: FormData): Promise<UploadResul
             if (!file.name) continue;
 
             const isVideo = file.type.startsWith('video/');
-            const isImage = file.type.startsWith('image/');
+            // Check both MIME type and extension for images (HEIC files often have wrong MIME type)
+            const ext = file.name.toLowerCase().split('.').pop();
+            const isImage = file.type.startsWith('image/') || ext === 'heic' || ext === 'heif';
 
             if (!isVideo && !isImage) {
                 return { success: false, error: `Unsupported file type: ${file.type}` };

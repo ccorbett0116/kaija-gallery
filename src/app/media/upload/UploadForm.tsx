@@ -205,9 +205,16 @@ export default function UploadForm() {
 
         // Note: No file size limit with chunked uploads!
 
+        // Helper to check if file is an image (including HEIC/HEIF which browsers often misreport)
+        const isImage = (file: File) => {
+            if (file.type.startsWith('image/')) return true;
+            const ext = file.name.toLowerCase().split('.').pop();
+            return ext === 'heic' || ext === 'heif';
+        };
+
         // Separate files by type and size
-        const smallImages = files.filter(f => f.type.startsWith('image/') && f.size < CHUNK_THRESHOLD);
-        const largeImages = files.filter(f => f.type.startsWith('image/') && f.size >= CHUNK_THRESHOLD);
+        const smallImages = files.filter(f => isImage(f) && f.size < CHUNK_THRESHOLD);
+        const largeImages = files.filter(f => isImage(f) && f.size >= CHUNK_THRESHOLD);
         const videos = files.filter(f => f.type.startsWith('video/'));
 
 
