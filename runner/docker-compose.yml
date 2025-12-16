@@ -15,7 +15,18 @@ services:
     command: >
       bash -c "
       echo 'Installing Docker Compose...' &&
-      curl -SL https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose &&
+      ARCH=\$$(uname -m) &&
+      if [ \"\$$ARCH\" = 'x86_64' ]; then
+        COMPOSE_ARCH='x86_64';
+      elif [ \"\$$ARCH\" = 'aarch64' ]; then
+        COMPOSE_ARCH='aarch64';
+      elif [ \"\$$ARCH\" = 'armv7l' ]; then
+        COMPOSE_ARCH='armv7';
+      else
+        echo \"Unsupported architecture: \$$ARCH\" && exit 1;
+      fi &&
+      echo \"Detected architecture: \$$ARCH, downloading docker-compose-linux-\$$COMPOSE_ARCH\" &&
+      curl -SL https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-\$$COMPOSE_ARCH -o /usr/local/bin/docker-compose &&
       chmod +x /usr/local/bin/docker-compose &&
       ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose &&
       docker-compose version &&
