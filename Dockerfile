@@ -4,7 +4,9 @@ ENV HOST=0.0.0.0
 ENV PORT=3000
 
 FROM base AS deps
-RUN apk update && apk add --no-cache ffmpeg python3 make g++ libc6-compat
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.20/community" >> /etc/apk/repositories \
+    && apk update \
+    && apk add --no-cache ffmpeg python3 make g++ libc6-compat
 COPY package*.json ./
 RUN npm ci
 
@@ -15,14 +17,18 @@ RUN npm run build
 
 # Install only production deps for the runtime image
 FROM base AS prod-deps
-RUN apk update && apk add --no-cache ffmpeg python3 make g++ libc6-compat
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.20/community" >> /etc/apk/repositories \
+    && apk update \
+    && apk add --no-cache ffmpeg python3 make g++ libc6-compat
 COPY package*.json ./
 RUN npm ci --omit=dev
 
 # Runtime image
 FROM base AS runner
 ENV NODE_ENV=production
-RUN apk update && apk add --no-cache ffmpeg libc6-compat
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.20/community" >> /etc/apk/repositories \
+    && apk update \
+    && apk add --no-cache ffmpeg libc6-compat
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
