@@ -18,26 +18,28 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [theme, setTheme] = useState<Theme | null>(null);
     const [mounted, setMounted] = useState(false);
 
+    const applyTheme = (next: Theme) => {
+        const root = document.documentElement;
+        root.classList.toggle('dark', next === 'dark');
+        root.style.setProperty('color-scheme', next);
+    };
+
     useEffect(() => {
         // Sync with saved preference or system default once client is ready
-        const savedTheme = localStorage.getItem('theme') as Theme | null;
+        const savedTheme = localStorage.getItem('theme');
         const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        const initialTheme = savedTheme || systemTheme;
+        const initialTheme = savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : systemTheme;
 
         setTheme(initialTheme);
+        localStorage.setItem('theme', initialTheme);
         setMounted(true);
     }, []);
 
     useEffect(() => {
         if (!mounted || !theme) return;
 
-        // Update document class and localStorage
-        const root = document.documentElement;
-        if (theme === 'dark') {
-            root.classList.add('dark');
-        } else {
-            root.classList.remove('dark');
-        }
+        // Update document class, color scheme, and localStorage
+        applyTheme(theme);
         localStorage.setItem('theme', theme);
     }, [theme, mounted]);
 

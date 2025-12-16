@@ -32,11 +32,13 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
+                  const root = document.documentElement;
                   const theme = localStorage.getItem('theme') ||
                     (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
                   if (theme === 'dark') {
-                    document.documentElement.classList.add('dark');
+                    root.classList.add('dark');
                   }
+                  root.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
                 } catch (e) {}
               })()
             `,

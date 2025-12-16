@@ -18,36 +18,36 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     const from = params?.from ?? '/';
 
     return (
-        <main className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-100">
-        <form
-            className="w-full max-w-sm space-y-4 bg-slate-900 p-6 rounded-xl shadow-md"
-    action={loginAction}
-    >
-    <input type="hidden" name="from" value={from} />
-    <h1 className="text-xl font-semibold text-center">Kaija Gallery Login</h1>
+        <main className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+            <form
+                className="w-full max-w-sm space-y-4 bg-white/90 dark:bg-slate-900 p-6 rounded-xl shadow-md border border-slate-200 dark:border-slate-800"
+                action={loginAction}
+            >
+                <input type="hidden" name="from" value={from} />
+                <h1 className="text-xl font-semibold text-center">Kaija Gallery Login</h1>
 
-    {error && (
-        <p className="text-sm text-red-400">
-            Incorrect password. Please try again.
-    </p>
-    )}
+                {error && (
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                        Incorrect password. Please try again.
+                    </p>
+                )}
 
-    <label className="block space-y-1">
-    <span className="text-sm">Shared Password</span>
-    <input
-    name="password"
-    type="password"
-    className="w-full rounded-md bg-slate-800 border border-slate-700 px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-sky-500"
-        />
-        </label>
+                <label className="block space-y-1">
+                    <span className="text-sm text-slate-700 dark:text-slate-200">Shared Password</span>
+                    <input
+                        name="password"
+                        type="password"
+                        className="w-full rounded-md bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring focus:ring-sky-500"
+                    />
+                </label>
 
-        <button
-    type="submit"
-    className="w-full rounded-md bg-sky-600 px-3 py-2 text-sm font-medium hover:bg-sky-500"
-        >
-        Log in
-        </button>
-        </form>
+                <button
+                    type="submit"
+                    className="w-full rounded-md bg-sky-600 px-3 py-2 text-sm font-medium text-slate-50 dark:text-slate-100 hover:bg-sky-500"
+                >
+                    Log in
+                </button>
+            </form>
         </main>
-);
+    );
 }
