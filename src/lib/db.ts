@@ -19,6 +19,19 @@ if (!isMemoryDb) {
     }
 }
 
+// Ensure media directories exist
+const mediaDirectories = [
+    path.join(process.cwd(), 'data', 'media', 'originals'),
+    path.join(process.cwd(), 'data', 'media', 'thumbnails'),
+    path.join(process.cwd(), 'data', 'media', 'web-videos'),
+];
+
+for (const dir of mediaDirectories) {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
+}
+
 // Single shared connection
 // Increase busy timeout to reduce SQLITE_BUSY errors when multiple workers touch the DB (e.g. during build)
 const db = new Database(dbPath, { timeout: 10000 });
